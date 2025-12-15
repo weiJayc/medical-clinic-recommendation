@@ -266,8 +266,11 @@ body {
   min-width: 70%;
   align-self: center;
 }
+<<<<<<< HEAD
 
 /* Ensure AI analyze button text is black */
 .ai-btn {
   color: #000;
 }
+=======
+>>>>>>> e06d80b (feat: add basic user interface)

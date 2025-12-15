@@ -90,6 +90,7 @@ export default function Home() {
     showToast(t("toastAnalysisReady"));
   };
 
+<<<<<<< HEAD
   const goToRecommendedSearch = () => {
     if (analysis?.departments?.length) {
       navigate("/search", { state: { departments: analysis.departments } });
@@ -98,6 +99,8 @@ export default function Home() {
     navigate("/search");
   };
 
+=======
+>>>>>>> e06d80b (feat: add basic user interface)
   const deptLabel = (id) => DEPARTMENTS[id]?.[language] ?? id;
 
   return (
@@ -133,7 +136,11 @@ export default function Home() {
           <button className="btn ai-btn" onClick={handleAnalyze}>
             {t("aiAnalyze")}
           </button>
+<<<<<<< HEAD
           <button className="btn search-btn" onClick={goToRecommendedSearch}>
+=======
+          <button className="btn search-btn" onClick={() => navigate("/search")}>
+>>>>>>> e06d80b (feat: add basic user interface)
             {t("searchHospital")}
           </button>
         </div>
