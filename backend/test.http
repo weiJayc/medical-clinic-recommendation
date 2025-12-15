@@ -1,0 +1,7 @@
+POST http://localhost:3001/api/recommend
+Content-Type: application/json
+
+{
+  "symptom": "常常想吐，全身無力",
+  "city": "台北市"
+}
