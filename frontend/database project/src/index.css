@@ -1,0 +1,101 @@
+/* 可以保留一些全域設定，簡單就好 */
+
+:root {
+  --primary: #009fa8;
+  --primary-soft: #63e4d3;
+  --bg: #d8edf0;
+  --surface: #ffffff;
+  --muted: #f1f1f1;
+  font-family: Arial, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  line-height: 1.5;
+  color: #0f2e35;
+  background-color: var(--bg);
+}
+
+/* 讓 body 沒有預設邊距，版面才好算 */
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+/* ⭐ 最重要：讓 React 的根節點吃滿整個螢幕，而不是 1280px 小盒子 */
+#root {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+/* Shared interactive feedback */
+button,
+.menu-list li,
+.history-item,
+.hospital-card,
+.fav-card,
+.dept-badge,
+.dept-tag {
+  transition: transform 0.12s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+button:hover:not(:disabled),
+.menu-list li:hover,
+.history-item:hover,
+.hospital-card:hover,
+.fav-card:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+button:active,
+.menu-list li:active,
+.history-item:active,
+.hospital-card:active,
+.fav-card:active,
+.dept-badge:active,
+.dept-tag:active {
+  transform: scale(0.95);
+}
+
+/* Toast */
+.toast-wrapper {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  z-index: 999;
+  pointer-events: none;
+  width: min(420px, 90vw);
+}
+
+.toast {
+  background: var(--primary);
+  color: white;
+  padding: 10px 14px;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  font-size: 14px;
+  animation: toast-pop 0.28s ease, toast-fade 0.25s ease 2s forwards;
+}
+
+@keyframes toast-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-fade {
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}

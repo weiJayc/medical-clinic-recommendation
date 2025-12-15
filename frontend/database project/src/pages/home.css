@@ -1,0 +1,268 @@
+/* --- Global Reset --- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Body */
+body {
+  font-family: Arial, sans-serif;
+  background-color: var(--bg);
+  color: #0f2e35;
+  overflow-x: hidden;
+}
+
+/* 外層：整個畫面置中 */
+.home-wrapper {
+  width: 100%;
+  min-height: 100vh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.home-wrapper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(0, 159, 168, 0.25), rgba(0, 159, 168, 0.15)),
+    url("../assets/1.jpg") center/cover no-repeat;
+  filter: brightness(0.95);
+  z-index: 0;
+}
+
+/* 左側三條線按鈕 */
+.menu-button {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  width: 32px;
+  height: 26px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 999;
+}
+
+.menu-button:focus {
+  outline: none;
+}
+
+.menu-button span {
+  display: block;
+  width: 100%;
+  height: 3px;
+  background: #0f2e35;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+/* 展開變X，45 度交叉 */
+.menu-button.open span:nth-child(1) {
+  transform: rotate(40deg);
+  width: 120%;
+  position: relative;
+  top: 10px;
+  left: -4px;
+}
+
+.menu-button.open span:nth-child(2) {
+  opacity: 0;
+}
+
+.menu-button.open span:nth-child(3) {
+  transform: rotate(-40deg);
+  width: 120%;
+  position: relative;
+  top: -10px;
+  left: -4px;
+}
+
+/* 主內容容器 */
+.home-container {
+  width: 100%;
+  max-width: 520px;
+  text-align: center;
+
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+
+  margin: 0 auto;
+  background: var(--surface);
+  padding: 24px 22px 32px;
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+  position: relative;
+  z-index: 1;
+}
+
+/* 標題 */
+.home-title {
+  font-size: clamp(22px, 4vw, 30px);
+  font-weight: bold;
+}
+
+/* 輸入區 */
+.input-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.input-box {
+  flex: 1;
+  max-width: 320px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #a9c9ce;
+  font-size: 16px;
+  background: var(--muted);
+}
+
+.send-btn {
+  padding: 10px 16px;
+  font-size: 16px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* 下方按鈕模組 */
+.button-group {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.btn {
+  padding: 15px 20px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  flex: 1;
+  max-width: 180px;
+}
+
+.ai-btn {
+  background: var(--primary);
+  cursor: default; /* 只是範例按鈕，不做動作 */
+}
+
+.search-btn {
+  background: var(--primary-soft);
+  color: #0f2e35;
+}
+
+/* 平板 RWD */
+@media (max-width: 768px) {
+  .home-wrapper {
+    padding: 80px 16px;
+    align-items: center;
+  }
+
+  .input-box {
+    max-width: 260px;
+  }
+}
+
+/* 手機 RWD */
+@media (max-width: 480px) {
+  .home-wrapper {
+    align-items: center;
+    padding: 80px 14px;
+  }
+
+  .input-area {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .button-group {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn {
+    width: 100%;
+    max-width: none;
+  }
+
+  .send-btn {
+    width: 80px;
+  }
+}
+
+/* ====== AI 分析結果卡 ====== */
+
+.analysis-card {
+  margin-top: 24px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: var(--muted);
+  text-align: left;
+}
+
+.analysis-card h3 {
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+
+.analysis-card h4 {
+  margin-top: 16px;
+  margin-bottom: 6px;
+  font-size: 16px;
+}
+
+.dept-list {
+  margin-top: 4px;
+}
+
+.dept-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  margin: 4px 6px 0 0;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  font-size: 14px;
+}
+
+.disease-list {
+  padding-left: 18px;
+  margin: 0;
+}
+
+.disease-list li {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.analysis-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #666;
+}
+
+.analysis-search-btn {
+  margin-top: 12px;
+  width: auto;
+  min-width: 70%;
+  align-self: center;
+}

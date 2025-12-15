@@ -1,0 +1,280 @@
+/* 外層 */
+.search-wrapper {
+  width: 100%;
+  min-height: 100vh;
+
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+
+  padding: 80px 20px 20px;  /* 上面留空給側邊欄 */
+  position: relative;
+  background: var(--bg);
+}
+
+/* 主內容區 */
+.search-container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 18px 16px 24px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+/* 標題 */
+.search-title {
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: bold;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+/* 控制列：搜索 + 篩選 + 排序 */
+.search-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.search-input {
+  flex: 1 1 240px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #a9c9ce;
+  font-size: 14px;
+  background: var(--muted);
+}
+
+.dept-select {
+  flex: 0 0 160px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #a9c9ce;
+  font-size: 14px;
+  background: var(--muted);
+}
+
+.sort-btn {
+  flex: 0 0 130px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* 列表 */
+.hospital-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 每張卡片 */
+.hospital-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+/* 卡片上段：標題 + 距離 */
+.hospital-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.hospital-name {
+  font-size: 16px;
+  margin: 0;
+}
+
+.hospital-type {
+  font-size: 12px;
+  color: #41616a;
+  margin: 2px 0 0;
+}
+
+.hospital-distance {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+/* 地址 */
+.hospital-address {
+  font-size: 13px;
+  color: #41616a;
+  margin: 4px 0 6px;
+}
+
+/* 科別 tag */
+.hospital-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.dept-tag {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  font-size: 12px;
+}
+
+/* 卡片底部：營業狀態 + 評分 */
+.hospital-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.open-status.open {
+  color: #16a34a;
+}
+
+.open-status.closed {
+  color: #b91c1c;
+}
+
+.rating {
+  font-weight: bold;
+}
+
+/* 沒結果 */
+.no-result {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #41616a;
+}
+
+/* RWD 手機 */
+@media (max-width: 600px) {
+  .search-wrapper {
+    padding: 70px 14px 14px;
+  }
+
+  .search-controls {
+    flex-direction: column;
+  }
+
+  .sort-btn,
+  .dept-select,
+  .search-input {
+    flex: 1 1 auto;
+  }
+}
+
+/* 回主畫面按鈕 */
+.back-home-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+
+  padding: 8px 14px;
+  font-size: 14px;
+  background: var(--surface);
+  border-radius: 10px;
+  border: 1px solid #a9c9ce;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.back-home-btn:hover {
+  background: #eef6f8;
+}
+
+/* --- 右上角房子 icon 回主頁 --- */
+.home-icon-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+
+  font-size: 26px;
+  background: none;
+  border: none;
+  cursor: pointer;
+
+  transition: 0.2s;
+}
+
+.home-icon-btn:hover {
+  transform: scale(1.15);
+  opacity: 0.8;
+}
+
+.home-icon-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.home-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.hospital-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.fav-heart {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 20px;
+  transition: none !important;
+  box-shadow: none !important;
+}
+
+.fav-heart:hover {
+  box-shadow: none !important;
+  background: none;
+  transform: none !important;
+}
+
+.fav-heart:active {
+  transform: scale(0.95);
+}
+
+.fav-heart.active {
+  transform: scale(1.1);
+}
+
+.home-icon-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.home-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.hospital-card:has(.fav-heart:hover),
+.hospital-card:has(.fav-heart:active) {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;
+  transform: none !important;
+}
