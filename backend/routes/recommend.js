@@ -1,7 +1,7 @@
 //找出症狀對應科別
 import express from "express";
-import { normalizeSymptoms } from "../GeminiModules.js";
-//import { symptomToDept } from "../mappings/symptomToDept.js";
+import { normalizeSymptoms } from "../utils/GeminiModules.js";
+import { findHospitals } from "../utils/findHospitals.js";
 import fs from "fs";
 
 const router = express.Router();
@@ -15,28 +15,20 @@ router.post("/", async (req, res) => {
   const { symptom, city } = req.body;
 
   try {
-    // ① Gemini：把使用者描述標準化
+    //Gemini：把使用者描述標準化並找出建議科別
     const standardized = await normalizeSymptoms(symptom);
 
-    // ② 根據標準化症狀找科別
-    let departments = new Set();
-    for (const s of standardized) {
-      if (symptomToDept[s]) {
-        symptomToDept[s].forEach(d => departments.add(d));
-      }
-    }
-
-    const deptList = [...departments];
-
-    // ③ 搜尋醫院（符合城市＆任一科別）
-    const matchedHospitals = hospitals.filter(h =>
-      h.city === city && h.departments.some(d => deptList.includes(d))
-    );
+     // 取得標準化症狀與建議科別
+    const standardizedSymptoms = standardized.symptoms;
+    const deptList = standardized.recommendDepartments;
+    
+    // 搜尋醫院（符合城市＆任一科別）
+    const matchedHospitals = findHospitals(city, deptList);
 
     // ④ 回傳給前端 Google Maps
     res.json({
       input: symptom,
-      standardizedSymptoms: standardized,
+      standardizedSymptoms: standardizedSymptoms,
       recommendDepartments: deptList,
       matchedHospitals: matchedHospitals
     });
