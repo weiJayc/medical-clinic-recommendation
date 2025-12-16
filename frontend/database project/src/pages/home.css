@@ -266,3 +266,8 @@ body {
   min-width: 70%;
   align-self: center;
 }
+
+/* Ensure AI analyze button text is black */
+.ai-btn {
+  color: #000;
+}

@@ -1,7 +1,7 @@
 import "./hospital.css";
 import { useState, useMemo, useEffect } from "react";
 import SideMenu from "../components/SideMenu";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import HomeIcon from "../assets/home.jpg";
 import { useLanguage, getLocalizedText } from "../contexts/LanguageContext";
 import { DEPARTMENTS } from "../data/medicalConstants";
@@ -14,7 +14,7 @@ const HOSPITALS = [
     type: { zh: "教學醫院", en: "Teaching Hospital" },
     departments: ["family", "internal", "ent", "cardiology"],
     distanceKm: 0.8,
-    address: { zh: "台北市大安區仁愛路四段100號", en: "100 Ren'ai Rd Sec.4, Da'an Dist., Taipei" },
+    address: { zh: "台北市大安區仁愛路四段100號", en: "100 Ren'ai Rd., Sec.4, Da'an Dist., Taipei" },
     isOpen: true,
     rating: 4.5,
   },
@@ -24,7 +24,7 @@ const HOSPITALS = [
     type: { zh: "社區診所", en: "Community Clinic" },
     departments: ["family", "pediatrics"],
     distanceKm: 0.4,
-    address: { zh: "台北市大安區復興南路一段50號10樓", en: "10F., No.50 Fuxing S. Rd, Da'an Dist., Taipei" },
+    address: { zh: "台北市大安區復興南路一段50號10樓", en: "10F., No.50 Fuxing S. Rd., Da'an Dist., Taipei" },
     isOpen: true,
     rating: 4.2,
   },
@@ -69,6 +69,14 @@ export default function HospitalSearch() {
   const [favorites, setFavorites] = useState([]);
 
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const recommendedDepts = useMemo(() => {
+    const incoming = location.state?.departments;
+    if (!Array.isArray(incoming)) return [];
+    const filtered = incoming.filter((d) => DEPARTMENTS[d]);
+    return Array.from(new Set(filtered));
+  }, [location.state]);
 
   useEffect(() => {
     try {
@@ -82,11 +90,12 @@ export default function HospitalSearch() {
     }
   }, []);
 
-  const allDepartments = useMemo(() => {
-    const set = new Set();
-    HOSPITALS.forEach((h) => h.departments.forEach((d) => set.add(d)));
-    return ["all", ...Array.from(set)];
-  }, []);
+  useEffect(() => {
+    if (!recommendedDepts.length) return;
+    setSelectedDept("all");
+  }, [recommendedDepts]);
+
+  const allDepartments = useMemo(() => ["all", ...Object.keys(DEPARTMENTS)], []);
 
   const filteredHospitals = useMemo(() => {
     const kw = keyword.toLowerCase();
@@ -99,10 +108,18 @@ export default function HospitalSearch() {
         .toLowerCase();
 
       const matchKeyword = !kw || name.includes(kw) || address.includes(kw) || deptText.includes(kw);
-      const matchDept = selectedDept === "all" || h.departments.includes(selectedDept);
-      return matchKeyword && matchDept;
+      const matchDept =
+        selectedDept === "all"
+          ? recommendedDepts.length === 0 || h.departments.some((d) => recommendedDepts.includes(d))
+          : h.departments.includes(selectedDept);
+      
+      // 如果有推薦科別，只顯示符合推薦科別的院所
+      const matchRecommended = 
+        recommendedDepts.length === 0 || h.departments.some((d) => recommendedDepts.includes(d));
+      
+      return matchKeyword && matchDept && matchRecommended;
     }).sort((a, b) => a.distanceKm - b.distanceKm);
-  }, [keyword, selectedDept, language]);
+  }, [keyword, selectedDept, language, recommendedDepts]);
 
   useEffect(() => {
     if (filteredHospitals.length === 0) return;
@@ -130,9 +147,7 @@ export default function HospitalSearch() {
 
   const toggleFavorite = (hospital) => {
     const exists = favorites.some((h) => h.id === hospital.id);
-    const updated = exists
-      ? favorites.filter((h) => h.id !== hospital.id)
-      : [...favorites, hospital];
+    const updated = exists ? favorites.filter((h) => h.id !== hospital.id) : [...favorites, hospital];
 
     setFavorites(updated);
     localStorage.setItem("favorites", JSON.stringify(updated));

@@ -90,6 +90,14 @@ export default function Home() {
     showToast(t("toastAnalysisReady"));
   };
 
+  const goToRecommendedSearch = () => {
+    if (analysis?.departments?.length) {
+      navigate("/search", { state: { departments: analysis.departments } });
+      return;
+    }
+    navigate("/search");
+  };
+
   const deptLabel = (id) => DEPARTMENTS[id]?.[language] ?? id;
 
   return (
@@ -125,7 +133,7 @@ export default function Home() {
           <button className="btn ai-btn" onClick={handleAnalyze}>
             {t("aiAnalyze")}
           </button>
-          <button className="btn search-btn" onClick={() => navigate("/search")}>
+          <button className="btn search-btn" onClick={goToRecommendedSearch}>
             {t("searchHospital")}
           </button>
         </div>
