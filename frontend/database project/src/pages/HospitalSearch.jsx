@@ -1,118 +1,74 @@
 import "./hospital.css";
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import SideMenu from "../components/SideMenu";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useLanguage, getLocalizedText } from "../contexts/LanguageContext";
-import { DEPARTMENTS } from "../data/medicalConstants";
+import { useLanguage } from "../contexts/LanguageContext";
 import { useToast } from "../contexts/ToastContext";
 import homeIcon from "../assets/icons/home.svg";
 
-const HOSPITALS = [
-  {
-    id: 1,
-    name: { zh: "仁愛醫院", en: "Ren'ai Hospital" },
-    type: { zh: "教學醫院", en: "Teaching Hospital" },
-    departments: ["family", "internal", "ent", "cardiology", "dermatology", "ophthalmology", "infectious"],
-    distanceKm: 0.8,
-    address: { zh: "台北市大安區仁愛路四段100號", en: "100 Ren'ai Rd., Sec.4, Da'an Dist., Taipei" },
-    isOpen: true,
-    rating: 4.5,
-  },
-  {
-    id: 2,
-    name: { zh: "安和診所", en: "An-He Clinic" },
-    type: { zh: "社區診所", en: "Community Clinic" },
-    departments: ["family", "pediatrics"],
-    distanceKm: 0.4,
-    address: { zh: "台北市大安區復興南路一段50號10樓", en: "10F., No.50 Fuxing S. Rd., Da'an Dist., Taipei" },
-    isOpen: true,
-    rating: 4.2,
-  },
-  {
-    id: 3,
-    name: { zh: "永康耳鼻喉科診所", en: "Yongkang ENT Clinic" },
-    type: { zh: "專科診所", en: "Specialty Clinic" },
-    departments: ["ent"],
-    distanceKm: 1.5,
-    address: { zh: "台北市大安區永康街20號", en: "No.20 Yongkang St., Da'an Dist., Taipei" },
-    isOpen: false,
-    rating: 4.0,
-  },
-  {
-    id: 4,
-    name: { zh: "沐風皮膚科診所", en: "Mufeng Dermatology" },
-    type: { zh: "專科診所", en: "Specialty Clinic" },
-    departments: ["dermatology"],
-    distanceKm: 0.9,
-    address: { zh: "台北市信義區復興南路300號", en: "No.300 Fuxing S. Rd., Xinyi Dist., Taipei" },
-    isOpen: true,
-    rating: 4.7,
-  },
-  {
-    id: 5,
-    name: { zh: "禾順骨科醫院", en: "Heshun Orthopedic Hospital" },
-    type: { zh: "專科醫院", en: "Specialty Hospital" },
-    departments: ["orthopedics", "rehab"],
-    distanceKm: 2.3,
-    address: { zh: "台北市中正區忠孝東路10號", en: "No.10 Zhongxiao E. Rd., Zhongzheng Dist., Taipei" },
-    isOpen: true,
-    rating: 4.1,
-  },
-];
-
-const ChevronIcon = ({ direction = "down", className = "" }) => {
-  const classes = [
-    "chevron-icon",
-    direction === "up" ? "chevron-up" : "",
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  return (
-    <svg
-      className={classes}
-      viewBox="0 0 12 6"
-      role="presentation"
-      focusable="false"
-      aria-hidden="true"
-    >
-      <path
-        d="M1 1.25 6 4.75 11 1.25"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-};
+function normalizeProvider(p) {
+  return {
+    id: p.provider_code ?? p.id ?? `${p.name}-${p.address}`,
+    name: { zh: p.name ?? "", en: p.name ?? "" },
+    address: { zh: p.address ?? "", en: p.address ?? "" },
+    specialty_id: p.specialty_id ?? null,
+    specialty_name: p.specialty_name ?? "",
+    distanceKm: (() => {
+      if (typeof p.distance_km === "number") return p.distance_km;
+      const n = parseFloat(p.distance_km);
+      return Number.isFinite(n) ? n : null;
+    })(),
+    phone: p.phone ?? "",
+  };
+}
 
 export default function HospitalSearch() {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const { showToast } = useToast();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [keyword, setKeyword] = useState("");
-  const [selectedDepts, setSelectedDepts] = useState([]);
-  const [deptDropdownOpen, setDeptDropdownOpen] = useState(false);
-  const [deptQuery, setDeptQuery] = useState("");
-  const [favorites, setFavorites] = useState([]);
-  const [expandedCards, setExpandedCards] = useState(() => new Set());
-  const [overflowCards, setOverflowCards] = useState(() => new Set());
-  const dropdownRef = useRef(null);
-  const tagRefs = useRef(new Map());
-
   const navigate = useNavigate();
   const location = useLocation();
-  const searchSource = location.state?.source === "nearby" ? "nearby" : "general";
-  const locationDepartments = searchSource === "nearby" ? location.state?.departments : null;
 
-  const recommendedDepts = useMemo(() => {
-    if (searchSource !== "nearby" || !Array.isArray(locationDepartments)) return [];
-    const filtered = locationDepartments.filter((d) => DEPARTMENTS[d]);
-    return Array.from(new Set(filtered));
-  }, [locationDepartments, searchSource]);
+  const providersBySpecialty = location.state?.providersBySpecialty || [];
+  const specialtiesFromState = location.state?.specialties || [];
+  const recommendDepartments = location.state?.recommendDepartments || [];
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [keyword, setKeyword] = useState("");
+  const [favorites, setFavorites] = useState([]);
+  const [selectedDept, setSelectedDept] = useState("all");
+
+  const flattenedProviders = useMemo(() => {
+    const list = [];
+    providersBySpecialty.forEach((group) => {
+      (group.providers || []).forEach((p) => list.push(normalizeProvider(p)));
+    });
+    return list;
+  }, [providersBySpecialty]);
+
+  const departments = useMemo(() => {
+    const fromProviders = flattenedProviders
+      .filter((p) => p.specialty_id)
+      .map((p) => ({ id: p.specialty_id, name: p.specialty_name }));
+    const fromState = (specialtiesFromState || []).map((s) => ({
+      id: s.specialty_id,
+      name: s.specialty_name,
+    }));
+    const merged = [...fromProviders, ...fromState];
+    const uniq = new Map();
+    merged.forEach((d) => {
+      if (d.id && !uniq.has(d.id)) uniq.set(d.id, d);
+    });
+    return Array.from(uniq.values());
+  }, [flattenedProviders, specialtiesFromState]);
+
+  useEffect(() => {
+    if (recommendDepartments.length && departments.length && selectedDept === "all") {
+      const match = departments.find((d) =>
+        recommendDepartments.some((r) => r.toLowerCase() === d.name.toLowerCase()),
+      );
+      if (match) setSelectedDept(match.id);
+    }
+  }, [recommendDepartments, departments, selectedDept]);
 
   useEffect(() => {
     try {
@@ -127,99 +83,46 @@ export default function HospitalSearch() {
   }, []);
 
   useEffect(() => {
-    if (!recommendedDepts.length) return;
-    setSelectedDepts((prev) => (prev.length ? prev : recommendedDepts));
-  }, [recommendedDepts]);
-
-  const departmentEntries = useMemo(() => Object.entries(DEPARTMENTS), []);
-
-  const filteredDeptOptions = useMemo(() => {
-    const q = deptQuery.trim().toLowerCase();
-    return departmentEntries.filter(([deptId, names]) => {
-      const label = getLocalizedText(names, language).toLowerCase();
-      return !q || label.includes(q);
-    });
-  }, [deptQuery, departmentEntries, language]);
-
-  useEffect(() => {
-    if (!deptDropdownOpen) return;
-    const handleClickOutside = (event) => {
-      if (!dropdownRef.current) return;
-      if (!dropdownRef.current.contains(event.target)) {
-        setDeptDropdownOpen(false);
-        setDeptQuery("");
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [deptDropdownOpen]);
-
-  const toggleDepartment = (deptId) => {
-    setSelectedDepts((prev) =>
-      prev.includes(deptId) ? prev.filter((d) => d !== deptId) : [...prev, deptId]
-    );
-  };
-
-  const removeDepartment = (deptId) => {
-    setSelectedDepts((prev) => prev.filter((d) => d !== deptId));
-  };
-
-  const handleDropdownToggle = () => {
-    setDeptDropdownOpen((prev) => {
-      const next = !prev;
-      if (!next) {
-        setDeptQuery("");
-      }
-      return next;
-    });
-  };
-
-  const filteredHospitals = useMemo(() => {
-    const kw = keyword.toLowerCase();
-    return HOSPITALS.filter((h) => {
-      const name = getLocalizedText(h.name, language).toLowerCase();
-      const address = getLocalizedText(h.address, language).toLowerCase();
-      const deptText = h.departments
-        .map((d) => DEPARTMENTS[d]?.[language] ?? d)
-        .join(" ")
-        .toLowerCase();
-
-      const matchKeyword = !kw || name.includes(kw) || address.includes(kw) || deptText.includes(kw);
-      const matchDept =
-        selectedDepts.length === 0 || h.departments.some((d) => selectedDepts.includes(d));
-
-      return matchKeyword && matchDept;
-    }).sort((a, b) => a.distanceKm - b.distanceKm);
-  }, [keyword, selectedDepts, language]);
-
-  useEffect(() => {
-    if (filteredHospitals.length === 0) return;
+    if (!flattenedProviders.length) return;
     try {
       const stored = JSON.parse(localStorage.getItem("search-history") || "[]");
       const base = Array.isArray(stored) ? stored : [];
-      const incoming = filteredHospitals.map((h) => ({
-        id: h.id,
-        name: h.name,
-        type: h.type,
-        address: h.address,
+      const incoming = flattenedProviders.slice(0, 10).map((p) => ({
+        id: p.id,
+        name: p.name,
+        address: p.address,
       }));
-
       const mergedMap = new Map();
       base.forEach((item) => mergedMap.set(item.id, item));
       incoming.forEach((item) => mergedMap.set(item.id, item));
-
       const mergedList = Array.from(mergedMap.values()).slice(-10);
       localStorage.setItem("search-history", JSON.stringify(mergedList));
       window.dispatchEvent(new Event("search-history-updated"));
     } catch (err) {
       console.error("Failed to update search history", err);
     }
-  }, [filteredHospitals]);
+  }, [flattenedProviders]);
 
-  const toggleFavorite = (hospital) => {
-    const exists = favorites.some((h) => h.id === hospital.id);
-    const updated = exists ? favorites.filter((h) => h.id !== hospital.id) : [...favorites, hospital];
+  const filtered = useMemo(() => {
+    const kw = keyword.trim().toLowerCase();
+    return flattenedProviders
+      .filter((p) => {
+        const name = (p.name?.zh || p.name?.en || "").toLowerCase();
+        const address = (p.address?.zh || p.address?.en || "").toLowerCase();
+        const matchKeyword = !kw || name.includes(kw) || address.includes(kw);
+        const matchDept = selectedDept === "all" || p.specialty_id === selectedDept;
+        return matchKeyword && matchDept;
+      })
+      .sort((a, b) => {
+        if (a.distanceKm == null) return 1;
+        if (b.distanceKm == null) return -1;
+        return a.distanceKm - b.distanceKm;
+      });
+  }, [flattenedProviders, keyword, selectedDept]);
 
+  const toggleFavorite = (provider) => {
+    const exists = favorites.some((h) => h.id === provider.id);
+    const updated = exists ? favorites.filter((h) => h.id !== provider.id) : [...favorites, provider];
     setFavorites(updated);
     localStorage.setItem("favorites", JSON.stringify(updated));
     showToast(exists ? t("toastFavRemoved") : t("toastFavAdded"));
@@ -227,56 +130,9 @@ export default function HospitalSearch() {
 
   const isFavorite = (id) => favorites.some((h) => h.id === id);
 
-  const updateOverflowFlags = useCallback(() => {
-    const next = new Set();
-    tagRefs.current.forEach((node, id) => {
-      if (!node) return;
-      const children = Array.from(node.children);
-      if (children.length === 0) return;
-      const firstTop = children[0].offsetTop;
-      const multiRow = children.some((child) => child.offsetTop - firstTop > 2);
-      if (multiRow) {
-        next.add(id);
-      }
-    });
-    setOverflowCards(next);
-  }, []);
-
-  useEffect(() => {
-    const raf = requestAnimationFrame(updateOverflowFlags);
-    return () => cancelAnimationFrame(raf);
-  }, [filteredHospitals, selectedDepts, language, updateOverflowFlags]);
-
-  useEffect(() => {
-    const handleResize = () => updateOverflowFlags();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [updateOverflowFlags]);
-
-  useEffect(() => {
-    setExpandedCards((prev) => {
-      let mutated = false;
-      const next = new Set(prev);
-      prev.forEach((id) => {
-        if (!overflowCards.has(id)) {
-          next.delete(id);
-          mutated = true;
-        }
-      });
-      return mutated ? next : prev;
-    });
-  }, [overflowCards]);
-
-  const toggleTagVisibility = (id) => {
-    setExpandedCards((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+  const renderDistance = (p) => {
+    if (typeof p.distanceKm === "number") return `${p.distanceKm.toFixed(2)} km`;
+    return t("distance");
   };
 
   return (
@@ -308,138 +164,65 @@ export default function HospitalSearch() {
             onChange={(e) => setKeyword(e.target.value)}
           />
 
-          <div className={`dept-multi-select ${deptDropdownOpen ? "open" : ""}`} ref={dropdownRef}>
-            <button
-              type="button"
-              className="multi-select-input"
-              onClick={handleDropdownToggle}
-              aria-haspopup="listbox"
-              aria-expanded={deptDropdownOpen}
-            >
-              <div className="multi-select-display">
-                {selectedDepts.length === 0 ? (
-                  <span className="placeholder">{t("deptMultiPlaceholder")}</span>
-                ) : (
-                  selectedDepts.map((dept) => (
-                    <span key={dept} className="multi-pill">
-                      {DEPARTMENTS[dept]?.[language] ?? dept}
-                    </span>
-                  ))
-                )}
-              </div>
-              <span className="caret" aria-hidden="true">
-                <ChevronIcon />
-              </span>
-            </button>
-
-            {deptDropdownOpen && (
-              <div className="multi-select-panel">
-                <input
-                  type="text"
-                  className="multi-select-search"
-                  placeholder={t("deptSearchPlaceholder")}
-                  value={deptQuery}
-                  onChange={(e) => setDeptQuery(e.target.value)}
-                />
-
-                <div className="multi-select-options" role="listbox" aria-multiselectable="true">
-                  {filteredDeptOptions.length === 0 && (
-                    <p className="multi-select-empty">{t("deptNoMatch")}</p>
-                  )}
-                  {filteredDeptOptions.map(([deptId, names]) => (
-                    <label key={deptId} className="multi-option">
-                      <input
-                        type="checkbox"
-                        checked={selectedDepts.includes(deptId)}
-                        onChange={() => toggleDepartment(deptId)}
-                      />
-                      <span>{getLocalizedText(names, language)}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <select
+            className="dept-select"
+            value={selectedDept}
+            onChange={(e) => setSelectedDept(e.target.value === "all" ? "all" : Number(e.target.value))}
+          >
+            <option value="all">{t("allDepartments")}</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {selectedDepts.length > 0 && (
+        {recommendDepartments.length > 0 && (
           <div className="selected-dept-tags">
-            {selectedDepts.map((dept) => {
-              const label = DEPARTMENTS[dept]?.[language] ?? dept;
-              return (
-                <span key={dept} className="dept-chip">
-                  <span>{label}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeDepartment(dept)}
-                    aria-label={`${t("remove")} ${label}`}
-                  >
-                    ×
-                  </button>
-                </span>
-              );
-            })}
+            {recommendDepartments.map((d) => (
+              <span key={d} className="dept-chip">
+                <span>{d}</span>
+              </span>
+            ))}
           </div>
         )}
 
         <div className="hospital-list">
-          {filteredHospitals.map((h) => (
-            <div key={h.id} className="hospital-card">
+          {filtered.map((p) => (
+            <div key={p.id} className="hospital-card">
               <div className="hospital-header">
                 <div>
-                  <h3 className="hospital-name">{getLocalizedText(h.name, language)}</h3>
+                  <h3 className="hospital-name">{p.name.zh || p.name.en}</h3>
+                  {p.specialty_name && <p className="hospital-type">{p.specialty_name}</p>}
                 </div>
 
                 <div className="hospital-right">
-                  <div className="hospital-distance">{h.distanceKm.toFixed(1)} km</div>
+                  <div className="hospital-distance">{renderDistance(p)}</div>
                   <button
-                    className={`fav-heart ${isFavorite(h.id) ? "active" : ""}`}
-                    onClick={() => toggleFavorite(h)}
+                    className={`fav-heart ${isFavorite(p.id) ? "active" : ""}`}
+                    onClick={() => toggleFavorite(p)}
                     aria-label="toggle favorite"
                   >
-                    {isFavorite(h.id) ? "♥" : "♡"}
+                    {isFavorite(p.id) ? "♥" : "♡"}
                   </button>
                 </div>
               </div>
 
-              <p className="hospital-address">{getLocalizedText(h.address, language)}</p>
-
-              <div className="hospital-tag-row">
-                <div
-                  className={`hospital-tags ${
-                    overflowCards.has(h.id) && !expandedCards.has(h.id) ? "collapsed" : ""
-                  }`}
-                  ref={(el) => {
-                    if (el) {
-                      tagRefs.current.set(h.id, el);
-                    } else {
-                      tagRefs.current.delete(h.id);
-                    }
-                  }}
-                >
-                  {h.departments.map((d) => (
-                    <span key={d} className="dept-tag">
-                      {DEPARTMENTS[d]?.[language] ?? d}
-                    </span>
-                  ))}
-                </div>
-                {overflowCards.has(h.id) && (
-                  <button
-                    type="button"
-                    className="tag-toggle"
-                    onClick={() => toggleTagVisibility(h.id)}
-                    aria-label={expandedCards.has(h.id) ? t("tagsCollapse") : t("tagsExpand")}
-                    aria-expanded={expandedCards.has(h.id)}
-                  >
-                    <ChevronIcon direction={expandedCards.has(h.id) ? "up" : "down"} />
-                  </button>
-                )}
-              </div>
-
+              <p className="hospital-address">{p.address.zh || p.address.en}</p>
+              {p.phone && <p className="hospital-type">{p.phone}</p>}
             </div>
           ))}
 
-          {filteredHospitals.length === 0 && <p className="no-result">{t("noResult")}</p>}
+          {!flattenedProviders.length && (
+            <p className="no-result">
+              {t("noResult")} — {t("homeTitle")} → {t("aiAnalyze")} 再試一次吧
+            </p>
+          )}
+
+          {flattenedProviders.length > 0 && filtered.length === 0 && (
+            <p className="no-result">{t("noResult")}</p>
+          )}
         </div>
       </div>
     </div>

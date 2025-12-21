@@ -3,105 +3,69 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SideMenu from "../components/SideMenu";
 import { useLanguage } from "../contexts/LanguageContext";
-import { DEPARTMENTS } from "../data/medicalConstants";
 import { useToast } from "../contexts/ToastContext";
+import { postJson } from "../utils/api";
 
-const symptomRules = [
-  {
-    triggers: ["流鼻水", "鼻塞", "打噴嚏", "runny nose", "sneeze", "stuffy nose"],
-    departments: ["family", "ent", "internal"],
-    diseases: ["uri", "allergicRhinitis"],
-  },
-  {
-    triggers: ["喉嚨痛", "咳嗽", "發燒", "sore throat", "cough", "fever"],
-    departments: ["family", "internal"],
-    diseases: ["uri", "influenza"],
-  },
-  {
-    triggers: ["皮疹", "紅疹", "癢", "rash", "itch"],
-    departments: ["dermatology"],
-    diseases: ["dermatitis", "eczema"],
-  },
-  {
-    triggers: ["胃痛", "腹痛", "噁心", "嘔吐", "stomach ache", "stomach pain", "nausea", "vomit"],
-    departments: ["gastro", "family"],
-    diseases: ["gastritis"],
-  },
-  {
-    triggers: ["胸痛", "心悸", "心跳快", "heart pain", "chest pain", "palpitation"],
-    departments: ["cardiology", "family"],
-    diseases: ["heartIssue"],
-  },
-  {
-    triggers: ["焦慮", "失眠", "憂鬱", "anxiety", "insomnia", "depression"],
-    departments: ["psychiatry", "family"],
-    diseases: ["anxiety"],
-  },
-  {
-    triggers: ["跌倒", "扭傷", "骨折", "fall", "sprain", "fracture"],
-    departments: ["orthopedics", "rehab"],
-    diseases: ["injury"],
-  },
-  {
-    triggers: ["懷孕", "經痛", "月經", "pregnant", "period pain", "menstrual", "cramps"],
-    departments: ["obgyn"],
-    diseases: ["pregnancy"],
-  },
-];
-
-function analyzeSymptom(text) {
-  const lower = text.toLowerCase();
-  const matchedDepts = [];
-  const matchedDiseases = [];
-
-  symptomRules.forEach((rule) => {
-    const hit = rule.triggers.some((word) => lower.includes(word.toLowerCase()));
-    if (hit) {
-      matchedDepts.push(...rule.departments);
-      matchedDiseases.push(...rule.diseases);
-    }
+async function getGeolocationSafe() {
+  if (!("geolocation" in navigator)) return null;
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { timeout: 4000 },
+    );
   });
-
-  if (matchedDepts.length === 0) {
-    matchedDepts.push("family");
-  }
-
-  return {
-    departments: Array.from(new Set(matchedDepts)),
-    diseases: Array.from(new Set(matchedDiseases)),
-  };
 }
 
 export default function Home() {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const { showToast } = useToast();
   const [menuOpen, setMenuOpen] = useState(false);
   const [symptom, setSymptom] = useState("");
   const [analysis, setAnalysis] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!symptom.trim()) {
       alert(t("requiredSymptom"));
       return;
     }
-    const result = analyzeSymptom(symptom);
-    setAnalysis(result);
-    showToast(t("toastAnalysisReady"));
+    setLoading(true);
+    setError("");
+    try {
+      const coords = await getGeolocationSafe();
+      const payload = { symptom: symptom.trim() };
+      if (coords) {
+        payload.lat = coords.lat;
+        payload.lng = coords.lng;
+      }
+
+      const res = await postJson("/api/recommend", payload);
+      setAnalysis(res);
+      showToast(t("toastAnalysisReady"));
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Request failed");
+      showToast(err.message || "Request failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const goToNearbySearch = () => {
-    if (!analysis?.departments?.length) return;
-
+    if (!analysis) return;
     navigate("/search", {
       state: {
         source: "nearby",
-        departments: analysis.departments,
+        providersBySpecialty: analysis.providersBySpecialty ?? [],
+        specialties: analysis.specialties ?? [],
+        recommendDepartments: analysis.recommendDepartments ?? [],
+        standardizedSymptoms: analysis.standardizedSymptoms ?? [],
       },
     });
   };
-
-  const deptLabel = (id) => DEPARTMENTS[id]?.[language] ?? id;
 
   return (
     <div className="home-wrapper">
@@ -119,7 +83,13 @@ export default function Home() {
       <div className="home-container">
         <h2 className="home-title">{t("homeTitle")}</h2>
 
-        <form className="input-area" onSubmit={(e) => { e.preventDefault(); handleAnalyze(); }}>
+        <form
+          className="input-area"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleAnalyze();
+          }}
+        >
           <input
             type="text"
             placeholder={t("symptomPlaceholder")}
@@ -127,25 +97,31 @@ export default function Home() {
             value={symptom}
             onChange={(e) => setSymptom(e.target.value)}
           />
-          <button className="send-btn" type="submit">
-            {t("send")}
+          <button className="send-btn" type="submit" disabled={loading}>
+            {loading ? "..." : t("send")}
           </button>
         </form>
+
+        {error && <p className="analysis-note" style={{ color: "red" }}>{error}</p>}
 
         {analysis && (
           <div className="analysis-card">
             <h3>{t("deptSuggestion")}</h3>
             <div className="dept-list">
-              {analysis.departments.map((d) => (
+              {(analysis.recommendDepartments || []).map((d) => (
                 <span key={d} className="dept-badge">
-                  {deptLabel(d)}
+                  {d}
                 </span>
               ))}
             </div>
 
             <p className="analysis-note">{t("analysisNote")}</p>
 
-            <button className="btn search-btn analysis-search-btn" onClick={goToNearbySearch}>
+            <button
+              className="btn search-btn analysis-search-btn"
+              onClick={goToNearbySearch}
+              disabled={loading}
+            >
               {t("analysisSearch")}
             </button>
           </div>
