@@ -1,5 +1,8 @@
 import express from "express";
 import dotenv from "dotenv";
+import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 import { pool } from "./db.js";
 import { normalizeSymptoms } from "./utils/gemini.js";
 import { findHospitals } from "./utils/findHospitals.js";
@@ -7,6 +10,13 @@ import { findHospitals } from "./utils/findHospitals.js";
 dotenv.config();
 
 const app = express();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const clientDist = path.resolve(__dirname, "../frontend/database project/dist");
+app.use(
+  cors({
+    origin: "*",
+  }),
+);
 app.use(express.json());
 
 function toNumber(v, name) {
@@ -40,7 +50,7 @@ async function findNearbyProviders(lat, lng, specialtyId, radius, limit) {
     WITH q AS (
         SELECT ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography AS user_geog
     )
-    SELECT DISTINCT ON (p.provider_code)
+    SELECT
         p.provider_code,
         p.name,
         p.phone,
@@ -61,17 +71,13 @@ async function findNearbyProviders(lat, lng, specialtyId, radius, limit) {
     WHERE p.geom IS NOT NULL
         AND ps.specialty_id = $3
         AND ST_DWithin(p.geom, q.user_geog, $4)
-    ORDER BY p.provider_code, distance_m ASC
+    ORDER BY distance_m ASC
     LIMIT $5;
   `;
   const params = [lng, lat, specialtyId, radius, limit];
   const { rows } = await pool.query(sql, params);
   return rows;
 }
-
-app.get("/", (req, res) => {
-  res.send("Server is running");
-});
 
 app.post("/api/recommend", async (req, res) => {
   const { symptom, city, lat, lng, radius, limit } = req.body ?? {};
@@ -157,7 +163,7 @@ app.get("/api/providers/nearby-by-specialty", async (req, res) => {
     WITH q AS (
         SELECT ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography AS user_geog
     )
-    SELECT DISTINCT ON (p.provider_code)
+    SELECT
         p.provider_code,
         p.name,
         p.phone,
@@ -180,7 +186,7 @@ app.get("/api/providers/nearby-by-specialty", async (req, res) => {
     WHERE p.geom IS NOT NULL
         AND ps.specialty_id = $3
         AND ST_DWithin(p.geom, q.user_geog, $4)
-    ORDER BY p.provider_code, distance_m ASC
+    ORDER BY distance_m ASC
     LIMIT $5;
     `;
 
@@ -213,6 +219,13 @@ app.get("/api/specialties", async (req, res) => {
 });
 
 const port = process.env.PORT || 3000;
+
+// Serve frontend build
+app.use(express.static(clientDist));
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(clientDist, "index.html"));
+});
+
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
