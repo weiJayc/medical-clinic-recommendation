@@ -11,7 +11,6 @@ export function findHospitals(city, deptList = []) {
 
   return hospitals.filter(
     (h) =>
-      (!city || h.city === city) &&
       Array.isArray(h.departments) &&
       h.departments.some((d) => deptList.includes(d)),
   );
