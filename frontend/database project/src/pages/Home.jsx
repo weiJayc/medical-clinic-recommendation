@@ -158,7 +158,7 @@ export default function Home() {
 
             <p className="analysis-note">{t("analysisNote")}</p>
 
-            <button className="btn search-btn analysis-search-btn" onClick={() => navigate("/search")}>
+            <button className="btn search-btn analysis-search-btn" onClick={goToNearbySearch}>
               {t("analysisSearch")}
             </button>
           </div>

@@ -1,19 +1,35 @@
 /* ------------------------- */
 /* 外層容器                   */
 /* ------------------------- */
+.fav-page {
+  width: 100%;
+  min-height: 100vh;
+  padding: 60px 0 20px;
+  position: relative;
+  background: linear-gradient(rgba(0, 159, 168, 0.25), rgba(0, 159, 168, 0.15)),
+    url("../assets/1.jpg") center/cover no-repeat;
+  background-attachment: fixed;
+}
+
 .fav-wrapper {
   padding: 20px;
   max-width: 900px;
-  margin: 60px auto 20px;
+  margin: 0 auto;
   position: relative;
-  background: var(--bg);
+}
+
+.fav-page .home-icon-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 20;
 }
 
 /* ------------------------- */
 /* 左上 SideMenu 漢堡按鈕      */
 /* ------------------------- */
-.menu-button {
-  position: fixed;
+.fav-page .menu-button {
+  position: absolute;
   top: 20px;
   left: 20px;
   width: 32px;
@@ -25,7 +41,7 @@
   border: none;
   cursor: pointer;
   padding: 0;
-  z-index: 999;
+  z-index: 20;
 }
 
 .menu-button span {
@@ -64,35 +80,18 @@
   margin-top: 20px;
   padding: 0 20px;
   display: flex;
-  justify-content: center; /* 標題置中 */
+  justify-content: flex-start;
   align-items: center;
   position: relative;
   color: #0f2e35;
 }
 
-/* 左邊 home icon */
-.home-btn {
-  position: absolute;
-  left: 20px;
-  top: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-}
-
-.home-icon {
-  width: 30px;
-  height: 30px;
-  object-fit: contain;
-}
-
 /* 中間標題 */
 .fav-title {
-  font-size: 24px;
+  font-size: clamp(22px, 3vw, 28px);
   font-weight: bold;
-  margin: 0 auto;
-  text-align: center;
+  margin: 0 0 16px;
+  text-align: left;
 }
 
 /* 右邊 編輯 / 完成 按鈕 */
@@ -147,11 +146,22 @@
 }
 
 .remove-btn {
-  background: none;
   border: none;
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 14px;
   cursor: pointer;
-  font-size: 22px;
-  color: #009fa8;
+  color: #ffffff;
+  background-color: #009fa8;
+  transition: transform 0.12s ease, box-shadow 0.2s ease;
+}
+
+.remove-btn:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.remove-btn:active {
+  transform: scale(0.95);
 }
 
 .fav-footer {

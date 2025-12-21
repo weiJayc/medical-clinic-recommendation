@@ -2,7 +2,6 @@ import "./favorite.css";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import SideMenu from "../components/SideMenu";
-import HomeIcon from "../assets/home.jpg";
 import { useLanguage, getLocalizedText } from "../contexts/LanguageContext";
 import { useToast } from "../contexts/ToastContext";
 
@@ -51,7 +50,7 @@ export default function Favorite() {
   };
 
   return (
-    <div className="fav-wrapper">
+    <div className="fav-page">
       <button
         className={`menu-button ${menuOpen ? "open" : ""}`}
         onClick={() => setMenuOpen(!menuOpen)}
@@ -62,56 +61,56 @@ export default function Favorite() {
       </button>
       <SideMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 
-      <div className="fav-topbar">
-        <div className="fav-center">
-          <button className="home-btn" onClick={() => navigate("/")}>
-            <img src={HomeIcon} alt="home" className="home-icon" />
-          </button>
+      <button className="home-icon-btn" onClick={() => navigate("/")} aria-label="home">
+        <span className="home-icon" aria-hidden="true">🏠︎</span>
+      </button>
 
+      <div className="fav-wrapper">
+        <div className="fav-topbar">
           <h2 className="fav-title">{t("favoriteTitle")}</h2>
+
+          <div className="fav-right-actions">
+            {!isEditing && (
+              <button className="edit-btn" onClick={() => setIsEditing(true)}>
+                {t("edit")}
+              </button>
+            )}
+            {isEditing && (
+              <button className="done-btn" onClick={() => setIsEditing(false)}>
+                {t("done")}
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="fav-right-actions">
-          {!isEditing && (
-            <button className="edit-btn" onClick={() => setIsEditing(true)}>
-              {t("edit")}
-            </button>
-          )}
-          {isEditing && (
-            <button className="done-btn" onClick={() => setIsEditing(false)}>
-              {t("done")}
-            </button>
+        <div className="fav-list">
+          {favorites.length === 0 ? (
+            <p className="no-fav">{t("noFavorite")}</p>
+          ) : (
+            favorites.map((h) => (
+              <div key={h.id} className="fav-card">
+                <div className="fav-header">
+                  <h3>{getLocalizedText(h.name, language)}</h3>
+                  {isEditing && (
+                    <button className="remove-btn" onClick={() => removeFavorite(h.id)}>
+                      {t("remove")}
+                    </button>
+                  )}
+                </div>
+                <p>{getLocalizedText(h.type, language)}</p>
+                <p>{getLocalizedText(h.address, language)}</p>
+                <div className="fav-footer">
+                  <span>
+                    {t("distance")} {h.distanceKm} km
+                  </span>
+                  <span>
+                    {t("rating")} {h.rating}
+                  </span>
+                </div>
+              </div>
+            ))
           )}
         </div>
-      </div>
-
-      <div className="fav-list">
-        {favorites.length === 0 ? (
-          <p className="no-fav">{t("noFavorite")}</p>
-        ) : (
-          favorites.map((h) => (
-            <div key={h.id} className="fav-card">
-              <div className="fav-header">
-                <h3>{getLocalizedText(h.name, language)}</h3>
-                {isEditing && (
-                  <button className="remove-btn" onClick={() => removeFavorite(h.id)}>
-                    {t("remove")}
-                  </button>
-                )}
-              </div>
-              <p>{getLocalizedText(h.type, language)}</p>
-              <p>{getLocalizedText(h.address, language)}</p>
-              <div className="fav-footer">
-                <span>
-                  {t("distance")} {h.distanceKm} km
-                </span>
-                <span>
-                  {t("rating")} {h.rating}
-                </span>
-              </div>
-            </div>
-          ))
-        )}
       </div>
     </div>
   );
