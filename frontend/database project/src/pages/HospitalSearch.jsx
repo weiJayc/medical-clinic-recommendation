@@ -2,7 +2,6 @@ import "./hospital.css";
 import { useState, useMemo, useEffect } from "react";
 import SideMenu from "../components/SideMenu";
 import { useNavigate, useLocation } from "react-router-dom";
-import HomeIcon from "../assets/home.jpg";
 import { useLanguage, getLocalizedText } from "../contexts/LanguageContext";
 import { DEPARTMENTS } from "../data/medicalConstants";
 import { useToast } from "../contexts/ToastContext";
@@ -70,13 +69,14 @@ export default function HospitalSearch() {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const searchSource = location.state?.source === "nearby" ? "nearby" : "general";
+  const locationDepartments = searchSource === "nearby" ? location.state?.departments : null;
 
   const recommendedDepts = useMemo(() => {
-    const incoming = location.state?.departments;
-    if (!Array.isArray(incoming)) return [];
-    const filtered = incoming.filter((d) => DEPARTMENTS[d]);
+    if (searchSource !== "nearby" || !Array.isArray(locationDepartments)) return [];
+    const filtered = locationDepartments.filter((d) => DEPARTMENTS[d]);
     return Array.from(new Set(filtered));
-  }, [location.state]);
+  }, [locationDepartments, searchSource]);
 
   useEffect(() => {
     try {
@@ -170,8 +170,8 @@ export default function HospitalSearch() {
       <SideMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="search-container">
-        <button className="home-icon-btn" onClick={() => navigate("/")}>
-          <img src={HomeIcon} alt="home" className="home-icon" />
+        <button className="home-icon-btn" onClick={() => navigate("/")} aria-label="home">
+          <span className="home-icon" aria-hidden="true">🏠︎</span>
         </button>
 
         <h2 className="search-title">{t("searchTitle")}</h2>

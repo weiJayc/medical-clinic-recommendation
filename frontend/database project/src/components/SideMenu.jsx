@@ -10,8 +10,8 @@ export default function SideMenu({ isOpen, onClose }) {
   const { showToast } = useToast();
   const [history, setHistory] = useState([]);
 
-  const handleNavigate = (path) => {
-    navigate(path);
+  const handleNavigate = (path, options) => {
+    navigate(path, options);
     onClose?.();
   };
 
@@ -50,6 +50,9 @@ export default function SideMenu({ isOpen, onClose }) {
         <h2 className="menu-title">{t("menuTitle")}</h2>
 
         <ul className="menu-list">
+          <li onClick={() => handleNavigate("/search", { state: { source: "general" } })}>
+            {t("searchHospital")}
+          </li>
           <li onClick={() => handleNavigate("/favorite")}>{t("menuFavorite")}</li>
           <li onClick={handleToggleLanguage}>
             {t("menuLanguage")} ({languageLabel})
