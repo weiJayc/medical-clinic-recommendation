@@ -1,14 +1,131 @@
 import express from "express";
 import dotenv from "dotenv";
 import { pool } from "./db.js";
+import { normalizeSymptoms } from "./utils/gemini.js";
+import { findHospitals } from "./utils/findHospitals.js";
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 
+function toNumber(v, name) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) throw new Error(`Invalid ${name}`);
+  return n;
+}
+
+async function mapSpecialtiesByName(names = []) {
+  const normalized = names
+    .map((n) => (typeof n === "string" ? n.trim().toLowerCase() : ""))
+    .filter(Boolean);
+
+  if (!normalized.length) return { rows: [], missing: [] };
+
+  const { rows } = await pool.query(
+    `SELECT specialty_id, specialty_name
+     FROM specialties
+     WHERE LOWER(specialty_name) = ANY($1::text[])`,
+    [normalized],
+  );
+
+  const foundNames = new Set(rows.map((r) => r.specialty_name.toLowerCase()));
+  const missing = normalized.filter((n) => !foundNames.has(n));
+
+  return { rows, missing };
+}
+
+async function findNearbyProviders(lat, lng, specialtyId, radius, limit) {
+  const sql = `
+    WITH q AS (
+        SELECT ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography AS user_geog
+    )
+    SELECT DISTINCT ON (p.provider_code)
+        p.provider_code,
+        p.name,
+        p.phone,
+        p.city_dist,
+        p.address,
+        s.specialty_id,
+        s.specialty_name,
+        ST_Y(p.geom::geometry) AS lat,
+        ST_X(p.geom::geometry) AS lng,
+        ROUND(ST_Distance(p.geom, q.user_geog))::int AS distance_m,
+        ROUND((ST_Distance(p.geom, q.user_geog) / 1000.0)::numeric, 2) AS distance_km
+    FROM providers p
+    JOIN provider_specialties ps
+        ON ps.provider_code = p.provider_code
+    JOIN specialties s
+        ON s.specialty_id = ps.specialty_id
+    CROSS JOIN q
+    WHERE p.geom IS NOT NULL
+        AND ps.specialty_id = $3
+        AND ST_DWithin(p.geom, q.user_geog, $4)
+    ORDER BY p.provider_code, distance_m ASC
+    LIMIT $5;
+  `;
+  const params = [lng, lat, specialtyId, radius, limit];
+  const { rows } = await pool.query(sql, params);
+  return rows;
+}
+
 app.get("/", (req, res) => {
   res.send("Server is running");
+});
+
+app.post("/api/recommend", async (req, res) => {
+  const { symptom, city, lat, lng, radius, limit } = req.body ?? {};
+  if (!symptom) {
+    return res.status(400).json({ ok: false, message: "symptom is required" });
+  }
+
+  try {
+    const standardized = await normalizeSymptoms(symptom);
+    const standardizedSymptoms = standardized.symptoms || [];
+    const deptList = standardized.recommendDepartments || [];
+
+    const matchedHospitals = findHospitals(city, deptList);
+
+    // map Gemini departments to DB specialties
+    const { rows: specialties, missing: specialtiesMissing } = await mapSpecialtiesByName(deptList);
+
+    const hasLocation = lat !== undefined && lng !== undefined;
+    const radiusSafe = radius ? Math.min(Math.max(Number(radius), 100), 10000) : 3000;
+    const limitRaw = limit ? Number(limit) : 50;
+    const limitSafe = Math.min(Math.max(limitRaw, 1), 200);
+
+    let providersBySpecialty = [];
+    if (hasLocation && specialties.length) {
+      const latNum = Number(lat);
+      const lngNum = Number(lng);
+      if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
+        throw new Error("lat/lng must be numbers when provided");
+      }
+
+      providersBySpecialty = await Promise.all(
+        specialties.map(async (s) => ({
+          specialty_id: s.specialty_id,
+          specialty_name: s.specialty_name,
+          providers: await findNearbyProviders(latNum, lngNum, s.specialty_id, radiusSafe, limitSafe),
+        })),
+      );
+    }
+
+    res.json({
+      ok: true,
+      input: symptom,
+      city: city ?? null,
+      standardizedSymptoms,
+      recommendDepartments: deptList,
+      matchedHospitals,
+      specialties,
+      specialtiesMissing,
+      providersBySpecialty,
+    });
+  } catch (err) {
+    console.error("recommend error", err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
 });
 
 // ✅ 測試 DB 是否連得上
@@ -20,12 +137,6 @@ app.get("/api/health/db", async (req, res) => {
     res.status(500).json({ ok: false, message: err.message });
   }
 });
-
-function toNumber(v, name) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) throw new Error(`Invalid ${name}`);
-  return n;
-}
 
 app.get("/api/providers/nearby-by-specialty", async (req, res) => {
   try {
@@ -59,7 +170,7 @@ app.get("/api/providers/nearby-by-specialty", async (req, res) => {
         ST_X(p.geom::geometry) AS lng,
 
         ROUND(ST_Distance(p.geom, q.user_geog))::int AS distance_m,
-        ROUND(ST_Distance(p.geom, q.user_geog) / 1000.0, 2) AS distance_km
+        ROUND((ST_Distance(p.geom, q.user_geog) / 1000.0)::numeric, 2) AS distance_km
     FROM providers p
     JOIN provider_specialties ps
         ON ps.provider_code = p.provider_code
