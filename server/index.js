@@ -4,7 +4,7 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import { pool } from "./db.js";
-import { normalizeSymptoms } from "./utils/gemini.js";
+import { normalizeSymptoms } from "./utils/ollama.js";
 import { findHospitals } from "./utils/findHospitals.js";
 
 dotenv.config();

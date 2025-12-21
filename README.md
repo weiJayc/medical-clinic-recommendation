@@ -51,7 +51,7 @@ It is intended for **information and guidance purposes only**.
 |------------|--------------------------------|
 | Frontend   | React, HTML, CSS, JavaScript   |
 | Backend    | FastAPI or Node.js             |
-| NLP        | Gemini API                     |
+| NLP        | Ollama (local LLM)             |
 | Database   | PostgreSQL                     |
 | GIS        | PostGIS (distance calculation) |
 | Map        | Google Maps API / OpenStreetMap|
@@ -68,6 +68,13 @@ medical-clinic-recommendation/
 ├─ docs/
 │   └─ core_web_function.md
 └─ README.md
+
+---
+
+## LLM Configuration (Node server)
+
+- Default model: `OLLAMA_MODEL=llama3.1` (set in `server/.env`, adjust as needed).
+- Endpoint: `OLLAMA_HOST=http://127.0.0.1:11434` (requires a running Ollama instance with the chosen model pulled).
 
 ---
 
