@@ -184,8 +184,10 @@ body {
   }
 
   .btn {
-    width: 100%;
-    max-width: none;
+    width: auto;
+    max-width: 85%;
+    min-width: 0;
+    padding: 12px 18px;
   }
 
   .send-btn {
@@ -252,9 +254,4 @@ body {
   font-weight: 600;
   background: #009fa8;
   color: #ffffff;
-}
-
-/* Ensure AI analyze button text is black */
-.ai-btn {
-  color: #000;
 }

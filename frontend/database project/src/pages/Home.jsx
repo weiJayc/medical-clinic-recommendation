@@ -90,12 +90,15 @@ export default function Home() {
     showToast(t("toastAnalysisReady"));
   };
 
-  const goToRecommendedSearch = () => {
-    if (analysis?.departments?.length) {
-      navigate("/search", { state: { departments: analysis.departments } });
-      return;
-    }
-    navigate("/search");
+  const goToNearbySearch = () => {
+    if (!analysis?.departments?.length) return;
+
+    navigate("/search", {
+      state: {
+        source: "nearby",
+        departments: analysis.departments,
+      },
+    });
   };
 
   const deptLabel = (id) => DEPARTMENTS[id]?.[language] ?? id;
@@ -128,15 +131,6 @@ export default function Home() {
             {t("send")}
           </button>
         </form>
-
-        <div className="button-group">
-          <button className="btn ai-btn" onClick={handleAnalyze}>
-            {t("aiAnalyze")}
-          </button>
-          <button className="btn search-btn" onClick={goToRecommendedSearch}>
-            {t("searchHospital")}
-          </button>
-        </div>
 
         {analysis && (
           <div className="analysis-card">

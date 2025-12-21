@@ -97,9 +97,10 @@ button:active:not(.menu-button),
 }
 
 .home-icon {
-  display: inline-block;
-  font-size: 30px;
-  line-height: 1;
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 @keyframes toast-pop {

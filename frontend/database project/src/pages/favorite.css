@@ -11,6 +11,7 @@
   background-attachment: fixed;
 }
 
+
 .fav-wrapper {
   padding: 20px;
   max-width: 900px;
@@ -126,50 +127,30 @@
 /* ------------------------- */
 /* 收藏清單                   */
 /* ------------------------- */
+
 .fav-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
-.fav-card {
-  padding: 16px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid #d8edf0;
-}
-
-.fav-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.remove-btn {
-  border: none;
-  border-radius: 16px;
-  padding: 6px 12px;
-  font-size: 14px;
+.fav-card .remove-btn {
+  border: 1px solid #d0e0e3;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  background: transparent;
   cursor: pointer;
-  color: #ffffff;
-  background-color: #009fa8;
-  transition: transform 0.12s ease, box-shadow 0.2s ease;
+  color: #0f2e35;
+  transition: background 0.15s ease;
 }
 
-.remove-btn:hover {
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+.fav-card .remove-btn:hover {
+  background: #eef6f8;
 }
 
-.remove-btn:active {
-  transform: scale(0.95);
-}
-
-.fav-footer {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 8px;
-  font-size: 14px;
-  color: #41616a;
+.fav-card .remove-btn:active {
+  transform: scale(0.97);
 }
 
 /* 沒收藏提示 */
