@@ -1,9 +1,11 @@
+import "./hospital.css";
 import "./favorite.css";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import SideMenu from "../components/SideMenu";
 import { useLanguage, getLocalizedText } from "../contexts/LanguageContext";
 import { useToast } from "../contexts/ToastContext";
+import homeIcon from "../assets/icons/home.svg";
 
 const normalizeField = (value) => {
   if (!value) return { zh: "", en: "" };
@@ -42,6 +44,13 @@ export default function Favorite() {
     }
   }, []);
 
+  const formatMetric = (value, digits = 1) => {
+    if (value === null || value === undefined || value === "") return "--";
+    const num = Number(value);
+    if (Number.isNaN(num)) return value;
+    return num.toFixed(digits);
+  };
+
   const removeFavorite = (id) => {
     const updated = favorites.filter((h) => h.id !== id);
     setFavorites(updated);
@@ -62,7 +71,7 @@ export default function Favorite() {
       <SideMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <button className="home-icon-btn" onClick={() => navigate("/")} aria-label="home">
-        <span className="home-icon" aria-hidden="true">🏠︎</span>
+        <img src={homeIcon} alt="" className="home-icon" aria-hidden="true" />
       </button>
 
       <div className="fav-wrapper">
@@ -87,28 +96,29 @@ export default function Favorite() {
           {favorites.length === 0 ? (
             <p className="no-fav">{t("noFavorite")}</p>
           ) : (
-            favorites.map((h) => (
-              <div key={h.id} className="fav-card">
-                <div className="fav-header">
-                  <h3>{getLocalizedText(h.name, language)}</h3>
-                  {isEditing && (
-                    <button className="remove-btn" onClick={() => removeFavorite(h.id)}>
-                      {t("remove")}
-                    </button>
-                  )}
+            favorites.map((h) => {
+              const distance = formatMetric(h.distanceKm);
+              return (
+                <div key={h.id} className="hospital-card fav-card">
+                  <div className="hospital-header">
+                    <div>
+                      <h3 className="hospital-name">{getLocalizedText(h.name, language)}</h3>
+                    </div>
+                    <div className="hospital-right">
+                      {distance !== "--" && (
+                        <div className="hospital-distance">{distance} km</div>
+                      )}
+                      {isEditing && (
+                        <button className="remove-btn" onClick={() => removeFavorite(h.id)}>
+                          {t("remove")}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <p className="hospital-address">{getLocalizedText(h.address, language)}</p>
                 </div>
-                <p>{getLocalizedText(h.type, language)}</p>
-                <p>{getLocalizedText(h.address, language)}</p>
-                <div className="fav-footer">
-                  <span>
-                    {t("distance")} {h.distanceKm} km
-                  </span>
-                  <span>
-                    {t("rating")} {h.rating}
-                  </span>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
