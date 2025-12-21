@@ -1,6 +1,8 @@
 import express from "express";
 import dotenv from "dotenv";
 import { pool } from "./db.js";
+import { normalizeSymptoms } from "./utils/gemini.js";
+import { findHospitals } from "./utils/findHospitals.js";
 
 dotenv.config();
 
@@ -9,6 +11,33 @@ app.use(express.json());
 
 app.get("/", (req, res) => {
   res.send("Server is running");
+});
+
+app.post("/api/recommend", async (req, res) => {
+  const { symptom, city } = req.body ?? {};
+  if (!symptom) {
+    return res.status(400).json({ ok: false, message: "symptom is required" });
+  }
+
+  try {
+    const standardized = await normalizeSymptoms(symptom);
+    const standardizedSymptoms = standardized.symptoms || [];
+    const deptList = standardized.recommendDepartments || [];
+
+    const matchedHospitals = findHospitals(city, deptList);
+
+    res.json({
+      ok: true,
+      input: symptom,
+      city: city ?? null,
+      standardizedSymptoms,
+      recommendDepartments: deptList,
+      matchedHospitals,
+    });
+  } catch (err) {
+    console.error("recommend error", err);
+    res.status(500).json({ ok: false, message: err.message });
+  }
 });
 
 // ✅ 測試 DB 是否連得上
