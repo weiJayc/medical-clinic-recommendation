@@ -4,50 +4,31 @@ import SideMenu from "../components/SideMenu";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useLanguage, getLocalizedText } from "../contexts/LanguageContext";
 import { useToast } from "../contexts/ToastContext";
+import { getJson } from "../utils/api";
 import homeIcon from "../assets/icons/home.svg";
 
-const FALLBACK_DEPTS = [
-  { zh: "內科", en: "Internal Medicine" },
-  { zh: "家庭醫學科", en: "Family Medicine" },
-  { zh: "感染科", en: "Infectious Diseases" },
-  { zh: "過敏免疫風濕科", en: "Allergy / Immunology / Rheumatology" },
-  { zh: "耳鼻喉科", en: "ENT / Otolaryngology" },
-  { zh: "神經內科", en: "Neurology" },
-  { zh: "心臟內科", en: "Cardiology" },
-  { zh: "血液科", en: "Hematology" },
-  { zh: "兒科", en: "Pediatrics" },
-  { zh: "腸胃內科", en: "Gastroenterology" },
-  { zh: "皮膚科", en: "Dermatology" },
-  { zh: "眼科", en: "Ophthalmology" },
-  { zh: "新陳代謝科", en: "Endocrinology / Metabolism" },
-  { zh: "牙醫一般科", en: "General Dentistry" },
-  { zh: "精神科", en: "Psychiatry" },
-  { zh: "復健科", en: "Physical Medicine & Rehabilitation" },
-  { zh: "胸腔內科", en: "Pulmonology" },
-  { zh: "外科", en: "General Surgery" },
-  { zh: "婦產科", en: "Obstetrics & Gynecology" },
-  { zh: "直腸外科", en: "Colorectal Surgery" },
-  { zh: "泌尿科", en: "Urology" },
-  { zh: "腎臟科", en: "Nephrology" },
-  { zh: "神經科", en: "Neurology (General)" },
-  { zh: "整形外科", en: "Plastic Surgery" },
-  { zh: "骨科", en: "Orthopedics" },
-  { zh: "心臟血管外科", en: "Cardiovascular Surgery" },
-  { zh: "疼痛控制科", en: "Pain Management" },
-  { zh: "解剖病理科", en: "Anatomic Pathology" },
-  { zh: "放射診斷科", en: "Diagnostic Radiology" },
-  { zh: "急診醫學科", en: "Emergency Medicine" },
-  { zh: "臨床病理科", en: "Clinical Pathology" },
-  { zh: "中醫一般科", en: "Traditional Chinese Medicine" },
-  { zh: "西醫一般科", en: "Western Medicine (General)" },
-  { zh: "放射種瘤科", en: "Radiation Oncology" },
-  { zh: "麻醉科", en: "Anesthesiology" },
-  { zh: "職業醫學科", en: "Occupational Medicine" },
-  { zh: "核子醫學科", en: "Nuclear Medicine" },
-  { zh: "其他", en: "Other" },
-].map((name) => ({ id: name.zh, name }));
+const normalizeId = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : v;
+};
+
+async function getGeolocationSafe() {
+  if (!("geolocation" in navigator)) return null;
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { timeout: 5000 },
+    );
+  });
+}
 
 function normalizeProvider(p) {
+  const rawSpecialtyId = p.specialty_id ?? p.specialtyid;
+  const specialtyId = (() => {
+    const n = Number(rawSpecialtyId);
+    return Number.isFinite(n) ? n : rawSpecialtyId ?? null;
+  })();
   const normalizedName =
     typeof p.name === "string" ? { zh: p.name, en: p.name } : p.name ?? { zh: "", en: "" };
   const normalizedAddress =
@@ -58,13 +39,15 @@ function normalizeProvider(p) {
       : p.specialty_name
         ? { zh: p.specialty_name.zh ?? "", en: p.specialty_name.en ?? p.specialty_name.zh ?? "" }
         : null;
+  const resolvedDeptName =
+    deptName || (specialtyId != null ? { zh: String(specialtyId), en: String(specialtyId) } : null);
 
   return {
     id: p.provider_code ?? p.id ?? `${p.name}-${p.address}`,
     name: normalizedName,
     address: normalizedAddress,
-    specialty_id: p.specialty_id ?? null,
-    specialty_name: deptName,
+    specialty_id: specialtyId,
+    specialty_name: resolvedDeptName,
     distanceKm: (() => {
       if (typeof p.distance_km === "number") return p.distance_km;
       const n = parseFloat(p.distance_km);
@@ -80,68 +63,74 @@ export default function HospitalSearch() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const providersBySpecialty = location.state?.providersBySpecialty || [];
+  const emptyProvidersRef = useRef([]);
+  const providersFromState = location.state?.providersBySpecialty ?? emptyProvidersRef.current;
   const specialtiesFromState = location.state?.specialties || [];
   const recommendDepartments = location.state?.recommendDepartments || [];
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [favorites, setFavorites] = useState([]);
+  const [specialtiesFromApi, setSpecialtiesFromApi] = useState([]);
   const [selectedDepts, setSelectedDepts] = useState([]);
   const [deptDropdownOpen, setDeptDropdownOpen] = useState(false);
   const [deptQuery, setDeptQuery] = useState("");
   const [expandedCards, setExpandedCards] = useState(() => new Set());
   const [overflowCards, setOverflowCards] = useState(() => new Set());
+  const [providersBySpecialtyState, setProvidersBySpecialtyState] = useState(providersFromState);
+  const [providersCache, setProvidersCache] = useState(() => {
+    const map = new Map();
+    (providersFromState || []).forEach((g) => {
+      const sid = normalizeId(g.specialty_id);
+      map.set(sid, { ...g, specialty_id: sid, providers: g.providers || [] });
+    });
+    console.log("[Search] init providersCache from state", map);
+    return map;
+  });
+  const [coords, setCoords] = useState(null);
+  const [loadingDeptIds, setLoadingDeptIds] = useState([]);
   const dropdownRef = useRef(null);
   const tagRefs = useRef(new Map());
-  const fallbackDeptMap = useMemo(() => new Map(FALLBACK_DEPTS.map((d) => [d.id, d.name])), []);
+  const fetchedDeptIds = useRef(new Set());
+  const initialPrefetchDone = useRef(false);
+  const selectedDeptSet = useMemo(() => new Set(selectedDepts.map((d) => normalizeId(d))), [selectedDepts]);
 
   const flattenedProviders = useMemo(() => {
     const list = [];
-    providersBySpecialty.forEach((group) => {
+    providersCache.forEach((group) => {
       (group.providers || []).forEach((p) => list.push(normalizeProvider(p)));
     });
     return list;
-  }, [providersBySpecialty]);
+  }, [providersCache]);
 
   const departments = useMemo(() => {
     const fromProviders = flattenedProviders
       .filter((p) => p.specialty_id)
       .map((p) => ({
-        id: p.specialty_id,
+        id: normalizeId(p.specialty_id),
         name: typeof p.specialty_name === "string" ? { zh: p.specialty_name, en: p.specialty_name } : p.specialty_name,
       }));
     const fromState = (specialtiesFromState || []).map((s) => ({
-      id: s.specialty_id,
+      id: normalizeId(s.specialty_id),
       name:
         typeof s.specialty_name === "string"
           ? { zh: s.specialty_name, en: s.specialty_name }
           : s.specialty_name ?? { zh: "", en: "" },
     }));
-    const merged = [...fromProviders, ...fromState];
+    const fromApi = specialtiesFromApi.map((s) => ({
+      id: normalizeId(s.specialty_id),
+      name: { zh: s.specialty_name, en: s.specialty_name },
+    }));
+
+    const merged = [...fromProviders, ...fromState, ...fromApi];
     const uniq = new Map();
     merged.forEach((d) => {
-      if (d.id && !uniq.has(d.id)) uniq.set(d.id, d);
-    });
-    const list = Array.from(uniq.values());
-
-    const existingNamesZh = new Set(
-      list
-        .map((d) => getLocalizedText(d.name, "zh"))
-        .filter(Boolean)
-        .map((s) => s.trim()),
-    );
-
-    FALLBACK_DEPTS.forEach((fd) => {
-      const label = getLocalizedText(fd.name, "zh").trim();
-      if (!existingNamesZh.has(label)) {
-        list.push(fd);
-        existingNamesZh.add(label);
+      if (d.id && !uniq.has(d.id)) {
+        uniq.set(d.id, d);
       }
     });
-
-    return list;
-  }, [flattenedProviders, specialtiesFromState]);
+    return Array.from(uniq.values());
+  }, [flattenedProviders, specialtiesFromState, specialtiesFromApi]);
 
   useEffect(() => {
     if (!recommendDepartments.length || !departments.length) return;
@@ -154,7 +143,7 @@ export default function HospitalSearch() {
           const en = getLocalizedText(d.name, "en").toLowerCase();
           return lowerNames.some((r) => r === zh || r === en);
         })
-        .map((d) => d.id);
+        .map((d) => normalizeId(d.id));
       return matchedIds.length ? matchedIds : prev;
     });
   }, [recommendDepartments, departments]);
@@ -192,30 +181,95 @@ export default function HospitalSearch() {
     }
   }, [flattenedProviders]);
 
-  const filtered = useMemo(() => {
-    const kw = keyword.trim().toLowerCase();
-    return flattenedProviders
-      .filter((p) => {
-        const name = getLocalizedText(p.name, language).toLowerCase();
-        const address = getLocalizedText(p.address, language).toLowerCase();
-        const matchKeyword = !kw || name.includes(kw) || address.includes(kw);
-        const deptLabelZh = getLocalizedText(p.specialty_name, "zh").toLowerCase();
-        const deptLabelEn = getLocalizedText(p.specialty_name, "en").toLowerCase();
-        const matchDept =
-          !selectedDepts.length ||
-          (p.specialty_id != null && selectedDepts.includes(p.specialty_id)) ||
-          selectedDepts.some((d) => {
-            const s = String(d).toLowerCase();
-            return s === deptLabelZh || s === deptLabelEn;
-          });
-        return matchKeyword && matchDept;
+  useEffect(() => {
+    getJson("/api/specialties")
+      .then((res) => {
+        if (Array.isArray(res?.data)) {
+          setSpecialtiesFromApi(res.data);
+        }
       })
-      .sort((a, b) => {
-        if (a.distanceKm == null) return 1;
-        if (b.distanceKm == null) return -1;
-        return a.distanceKm - b.distanceKm;
+      .catch((err) => {
+        console.error("Failed to load specialties", err);
       });
-  }, [flattenedProviders, keyword, selectedDepts, language]);
+  }, []);
+
+  useEffect(() => {
+    if (!providersFromState || !providersFromState.length) return;
+    fetchedDeptIds.current.clear();
+    const next = new Map();
+    providersFromState.forEach((g) => {
+      const sid = normalizeId(g.specialty_id);
+      next.set(sid, { ...g, specialty_id: sid, providers: g.providers || [] });
+    });
+    console.log("[Search] state providers updated", next);
+    setProvidersBySpecialtyState(providersFromState);
+    setProvidersCache(next);
+  }, [providersFromState]);
+
+  const ensureCoords = useCallback(async () => {
+    if (coords) return coords;
+    const next = await getGeolocationSafe();
+    if (!next) {
+      throw new Error(t("locationUnavailable") || "請允許定位以搜尋附近診所");
+    }
+    setCoords(next);
+    return next;
+  }, [coords, t]);
+
+  useEffect(() => {
+    ensureCoords().catch((err) => {
+      console.error("prefetch geolocation failed", err);
+      showToast(err.message || "無法取得定位，部分功能將受限");
+    });
+  }, [ensureCoords, showToast]);
+
+  const fetchNearbyBySpecialty = useCallback(
+    async (deptId) => {
+      const numericId = Number(deptId);
+      if (!Number.isFinite(numericId)) return;
+      if (loadingDeptIds.includes(numericId)) return;
+
+      setLoadingDeptIds((prev) => [...prev, numericId]);
+      try {
+        const currentCoords = await ensureCoords();
+        const params = new URLSearchParams({
+          lat: currentCoords.lat,
+          lng: currentCoords.lng,
+          specialty_id: String(numericId),
+        });
+        console.log("[Search] fetching nearby", { numericId, params: params.toString() });
+        const data = await getJson(`/api/providers/nearby-by-specialty?${params.toString()}`);
+        const providers = Array.isArray(data?.data) ? data.data : [];
+        const specialtyEntry = departments.find((d) => d.id === deptId);
+        const specialtyName = specialtyEntry?.name ?? deptId;
+
+        setProvidersCache((prev) => {
+          const next = new Map(prev);
+          next.set(numericId, {
+            specialty_id: numericId,
+            specialty_name: specialtyName,
+            providers,
+          });
+          console.log("[Search] cache updated", { numericId, count: providers.length });
+          return next;
+        });
+      } catch (err) {
+        console.error("fetch nearby failed", err);
+        showToast(err.message || "Failed to fetch nearby providers");
+      } finally {
+        setLoadingDeptIds((prev) => prev.filter((id) => id !== numericId));
+      }
+    },
+    [departments, ensureCoords, loadingDeptIds, showToast],
+  );
+
+  const filtered = useMemo(() => {
+    const base = selectedDeptSet.size
+      ? flattenedProviders.filter((p) => selectedDeptSet.has(normalizeId(p.specialty_id)))
+      : flattenedProviders;
+    const toNum = (d) => (typeof d === "number" ? d : Number.POSITIVE_INFINITY);
+    return [...base].sort((a, b) => toNum(a.distanceKm) - toNum(b.distanceKm));
+  }, [flattenedProviders, selectedDeptSet]);
 
   const toggleFavorite = (provider) => {
     const exists = favorites.some((h) => h.id === provider.id);
@@ -241,13 +295,30 @@ export default function HospitalSearch() {
   };
 
   const toggleDepartment = (deptId) => {
-    setSelectedDepts((prev) =>
-      prev.includes(deptId) ? prev.filter((d) => d !== deptId) : [...prev, deptId],
-    );
+    const normalizedId = normalizeId(deptId);
+    setSelectedDepts((prev) => {
+      const exists = prev.includes(normalizedId);
+      if (exists) {
+        fetchedDeptIds.current.delete(normalizedId);
+        console.log("[Search] dept removed", normalizedId);
+        return prev.filter((d) => d !== normalizedId);
+      }
+      fetchedDeptIds.current.delete(normalizedId); // ensure refetch when re-adding
+        console.log("[Search] dept added", normalizedId);
+      return [...prev, normalizedId];
+    });
+
+    // Fire fetch immediately when user selects a new department
+    const numericId = Number(normalizedId);
+    if (Number.isFinite(numericId) && !fetchedDeptIds.current.has(numericId)) {
+      fetchedDeptIds.current.add(numericId);
+      fetchNearbyBySpecialty(numericId);
+    }
   };
 
   const removeDepartment = (deptId) => {
     setSelectedDepts((prev) => prev.filter((d) => d !== deptId));
+    fetchedDeptIds.current.delete(deptId);
   };
 
   const departmentEntries = useMemo(() => departments.map((d) => [d.id, d.name]), [departments]);
@@ -256,20 +327,11 @@ export default function HospitalSearch() {
     (value) => {
       if (!value) return "";
       if (typeof value === "string") {
-        const fallback = fallbackDeptMap.get(value);
-        if (fallback) return getLocalizedText(fallback, language);
         return value;
       }
-      // value is an object with zh/en; if en 缺或等於 zh，嘗試用 fallback 對照
-      const text = getLocalizedText(value, language);
-      if (language === "en") {
-        const zhText = getLocalizedText(value, "zh");
-        const fallback = fallbackDeptMap.get(zhText);
-        if (fallback) return getLocalizedText(fallback, "en");
-      }
-      return text;
+      return getLocalizedText(value, language);
     },
-    [language, fallbackDeptMap],
+    [language],
   );
 
   const filteredDeptOptions = useMemo(() => {
@@ -303,7 +365,20 @@ export default function HospitalSearch() {
       const multiRow = children.some((child) => child.offsetTop - firstTop > 2);
       if (multiRow) next.add(id);
     });
-    setOverflowCards(next);
+
+    setOverflowCards((prev) => {
+      if (prev.size === next.size) {
+        let same = true;
+        for (const id of next) {
+          if (!prev.has(id)) {
+            same = false;
+            break;
+          }
+        }
+        if (same) return prev;
+      }
+      return next;
+    });
   }, []);
 
   useEffect(() => {
@@ -340,6 +415,19 @@ export default function HospitalSearch() {
     });
   };
 
+  useEffect(() => {
+    if (initialPrefetchDone.current) return;
+    if (!selectedDepts.length) return;
+    initialPrefetchDone.current = true;
+    selectedDepts.forEach((deptId) => {
+      const numericId = Number(deptId);
+      if (!Number.isFinite(numericId)) return;
+      if (fetchedDeptIds.current.has(numericId)) return;
+      fetchedDeptIds.current.add(numericId);
+      fetchNearbyBySpecialty(numericId);
+    });
+  }, [selectedDepts, fetchNearbyBySpecialty]);
+
   return (
     <div className="search-wrapper">
       <button
@@ -354,7 +442,7 @@ export default function HospitalSearch() {
       <SideMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="search-container">
-        <button className="home-icon-btn" onClick={() => navigate("/")} aria-label="home">
+        <button className="home-icon-btn" type="button" onClick={() => navigate("/")} aria-label="home">
           <img src={homeIcon} alt="" className="home-icon" aria-hidden="true" />
         </button>
 

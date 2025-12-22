@@ -50,12 +50,24 @@ export default function SideMenu({ isOpen, onClose }) {
         <h2 className="menu-title">{t("menuTitle")}</h2>
 
         <ul className="menu-list">
-          <li onClick={() => handleNavigate("/search", { state: { source: "general" } })}>
-            {t("searchHospital")}
+          <li>
+            <button
+              type="button"
+              className="menu-link"
+              onClick={() => handleNavigate("/search", { state: { source: "general" } })}
+            >
+              {t("searchHospital")}
+            </button>
           </li>
-          <li onClick={() => handleNavigate("/favorite")}>{t("menuFavorite")}</li>
-          <li onClick={handleToggleLanguage}>
-            {t("menuLanguage")} ({languageLabel})
+          <li>
+            <button type="button" className="menu-link" onClick={() => handleNavigate("/favorite")}>
+              {t("menuFavorite")}
+            </button>
+          </li>
+          <li>
+            <button type="button" className="menu-link" onClick={handleToggleLanguage}>
+              {t("menuLanguage")} ({languageLabel})
+            </button>
           </li>
         </ul>
 

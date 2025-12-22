@@ -70,7 +70,7 @@ export default function Favorite() {
       </button>
       <SideMenu isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 
-      <button className="home-icon-btn" onClick={() => navigate("/")} aria-label="home">
+      <button className="home-icon-btn" type="button" onClick={() => navigate("/")} aria-label="home">
         <img src={homeIcon} alt="" className="home-icon" aria-hidden="true" />
       </button>
 
