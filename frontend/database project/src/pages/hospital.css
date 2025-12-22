@@ -9,7 +9,58 @@
 
   padding: 80px 20px 20px;  /* 上面留空給側邊欄 */
   position: relative;
-  background: var(--bg);
+  background: linear-gradient(rgba(0, 159, 168, 0.25), rgba(0, 159, 168, 0.15)),
+    url("../assets/1.jpg") center/cover fixed no-repeat;
+}
+
+/* 左上漢堡按鈕：跟著頁面捲動 */
+.search-wrapper .menu-button {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 32px;
+  height: 26px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 999;
+}
+
+.search-wrapper .menu-button:focus {
+  outline: none;
+}
+
+.search-wrapper .menu-button span {
+  display: block;
+  width: 100%;
+  height: 3px;
+  background: #0f2e35;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.search-wrapper .menu-button.open span:nth-child(1) {
+  transform: rotate(40deg);
+  width: 120%;
+  position: relative;
+  top: 10px;
+  left: -4px;
+}
+
+.search-wrapper .menu-button.open span:nth-child(2) {
+  opacity: 0;
+}
+
+.search-wrapper .menu-button.open span:nth-child(3) {
+  transform: rotate(-40deg);
+  width: 120%;
+  position: relative;
+  top: -10px;
+  left: -4px;
 }
 
 /* 主內容區 */
@@ -48,13 +99,136 @@
   background: var(--muted);
 }
 
-.dept-select {
-  flex: 0 0 160px;
-  padding: 8px 10px;
+.dept-multi-select {
+  flex: 1 1 240px;
+  min-width: 220px;
+  position: relative;
+}
+
+.dept-multi-select.open .multi-select-input {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(0, 159, 168, 0.15);
+}
+
+.multi-select-input {
+  width: 100%;
   border-radius: 10px;
   border: 1px solid #a9c9ce;
-  font-size: 14px;
   background: var(--muted);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.multi-select-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  flex: 1;
+}
+
+.multi-select-display .placeholder {
+  color: #5a7c83;
+  font-size: 14px;
+}
+
+.multi-pill {
+  background: #c1e2d8;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.multi-select-input .caret {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0f2e35;
+}
+
+.multi-select-input .caret .chevron-icon {
+  width: 18px;
+  height: 10px;
+}
+
+.multi-select-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid #d0e0e3;
+  padding: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  z-index: 5;
+}
+
+.multi-select-search {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #a9c9ce;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.multi-select-options {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.multi-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.multi-select-empty {
+  font-size: 13px;
+  color: #41616a;
+  margin: 0;
+}
+
+.selected-dept-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+
+.dept-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #c1e2d8;
+  font-size: 13px;
+}
+
+.dept-chip button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 0.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000;
+}
+
+.dept-chip button:focus {
+  outline: 1px dotted #0f2e35;
 }
 
 .sort-btn {
@@ -87,19 +261,13 @@
 .hospital-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
+  align-items: flex-start;
+  margin-bottom: 12px;
 }
 
 .hospital-name {
   font-size: 16px;
   margin: 0;
-}
-
-.hospital-type {
-  font-size: 12px;
-  color: #41616a;
-  margin: 2px 0 0;
 }
 
 .hospital-distance {
@@ -108,18 +276,72 @@
 }
 
 /* 地址 */
+
 .hospital-address {
   font-size: 13px;
   color: #41616a;
-  margin: 4px 0 6px;
+  margin: 12px 0;
 }
 
 /* 科別 tag */
+.hospital-tag-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 .hospital-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 8px;
+  margin: 0;
+  flex: 1;
+  position: relative;
+}
+
+.hospital-tags.collapsed {
+  max-height: 32px;
+  overflow: hidden;
+}
+
+.tag-toggle {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  line-height: 1;
+  color: #0f2e35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.tag-toggle:hover {
+  color: #0b1f24;
+}
+
+.tag-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.tag-toggle .chevron-icon {
+  width: 18px;
+  height: 10px;
+}
+
+.chevron-icon {
+  width: 16px;
+  height: 9px;
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.chevron-icon.chevron-up {
+  transform: rotate(180deg);
 }
 
 .dept-tag {
@@ -132,20 +354,11 @@
 /* 卡片底部：營業狀態 + 評分 */
 .hospital-footer {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  justify-content: flex-end;
   font-size: 12px;
 }
 
-.open-status.open {
-  color: #16a34a;
-}
-
-.open-status.closed {
-  color: #b91c1c;
-}
-
-.rating {
+.distance-info {
   font-weight: bold;
 }
 
@@ -167,9 +380,13 @@
   }
 
   .sort-btn,
-  .dept-select,
+  .dept-multi-select,
   .search-input {
     flex: 1 1 auto;
+  }
+
+  .tag-toggle {
+    padding: 4px;
   }
 }
 
@@ -192,46 +409,11 @@
   background: #eef6f8;
 }
 
-/* --- 右上角房子 icon 回主頁 --- */
-.home-icon-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-
-  font-size: 26px;
-  background: none;
-  border: none;
-  cursor: pointer;
-
-  transition: 0.2s;
-}
-
-.home-icon-btn:hover {
-  transform: scale(1.15);
-  opacity: 0.8;
-}
-
-.home-icon-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-}
-
-.home-icon {
-  width: 32px;
-  height: 32px;
-  object-fit: contain;
-}
-
 .hospital-right {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
 }
 
 .fav-heart {
@@ -255,22 +437,6 @@
 
 .fav-heart.active {
   transform: scale(1.1);
-}
-
-.home-icon-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-}
-
-.home-icon {
-  width: 32px;
-  height: 32px;
-  object-fit: contain;
 }
 
 .hospital-card:has(.fav-heart:hover),

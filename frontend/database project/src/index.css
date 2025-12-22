@@ -17,7 +17,8 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg);
+  background: linear-gradient(rgba(0, 159, 168, 0.15), rgba(0, 159, 168, 0.25)),
+    url("./assets/1.jpg") center/cover fixed no-repeat;
 }
 
 /* ⭐ 最重要：讓 React 的根節點吃滿整個螢幕，而不是 1280px 小盒子 */
@@ -39,7 +40,7 @@ button,
   transition: transform 0.12s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
-button:hover:not(:disabled),
+button:hover:not(:disabled):not(.menu-button),
 .menu-list li:hover,
 .history-item:hover,
 .hospital-card:hover,
@@ -47,7 +48,7 @@ button:hover:not(:disabled),
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
 }
 
-button:active,
+button:active:not(.menu-button),
 .menu-list li:active,
 .history-item:active,
 .hospital-card:active,
@@ -80,6 +81,26 @@ button:active,
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   font-size: 14px;
   animation: toast-pop 0.28s ease, toast-fade 0.25s ease 2s forwards;
+}
+
+/* 全域右上回首頁按鈕 */
+.home-icon-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 998;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.home-icon {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 @keyframes toast-pop {

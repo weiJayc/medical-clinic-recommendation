@@ -1,19 +1,36 @@
 /* ------------------------- */
 /* 外層容器                   */
 /* ------------------------- */
+.fav-page {
+  width: 100%;
+  min-height: 100vh;
+  padding: 60px 0 20px;
+  position: relative;
+  background: linear-gradient(rgba(0, 159, 168, 0.25), rgba(0, 159, 168, 0.15)),
+    url("../assets/1.jpg") center/cover no-repeat;
+  background-attachment: fixed;
+}
+
+
 .fav-wrapper {
   padding: 20px;
   max-width: 900px;
-  margin: 60px auto 20px;
+  margin: 0 auto;
   position: relative;
-  background: var(--bg);
+}
+
+.fav-page .home-icon-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 20;
 }
 
 /* ------------------------- */
 /* 左上 SideMenu 漢堡按鈕      */
 /* ------------------------- */
-.menu-button {
-  position: fixed;
+.fav-page .menu-button {
+  position: absolute;
   top: 20px;
   left: 20px;
   width: 32px;
@@ -25,7 +42,7 @@
   border: none;
   cursor: pointer;
   padding: 0;
-  z-index: 999;
+  z-index: 20;
 }
 
 .menu-button span {
@@ -64,35 +81,18 @@
   margin-top: 20px;
   padding: 0 20px;
   display: flex;
-  justify-content: center; /* 標題置中 */
+  justify-content: flex-start;
   align-items: center;
   position: relative;
   color: #0f2e35;
 }
 
-/* 左邊 home icon */
-.home-btn {
-  position: absolute;
-  left: 20px;
-  top: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-}
-
-.home-icon {
-  width: 30px;
-  height: 30px;
-  object-fit: contain;
-}
-
 /* 中間標題 */
 .fav-title {
-  font-size: 24px;
+  font-size: clamp(22px, 3vw, 28px);
   font-weight: bold;
-  margin: 0 auto;
-  text-align: center;
+  margin: 0 0 16px;
+  text-align: left;
 }
 
 /* 右邊 編輯 / 完成 按鈕 */
@@ -127,39 +127,30 @@
 /* ------------------------- */
 /* 收藏清單                   */
 /* ------------------------- */
+
 .fav-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
-.fav-card {
-  padding: 16px;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid #d8edf0;
-}
-
-.fav-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.remove-btn {
-  background: none;
-  border: none;
+.fav-card .remove-btn {
+  border: 1px solid #d0e0e3;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  background: transparent;
   cursor: pointer;
-  font-size: 22px;
-  color: #009fa8;
+  color: #0f2e35;
+  transition: background 0.15s ease;
 }
 
-.fav-footer {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 8px;
-  font-size: 14px;
-  color: #41616a;
+.fav-card .remove-btn:hover {
+  background: #eef6f8;
+}
+
+.fav-card .remove-btn:active {
+  transform: scale(0.97);
 }
 
 /* 沒收藏提示 */
