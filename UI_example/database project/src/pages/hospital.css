@@ -2,7 +2,6 @@
 .search-wrapper {
   width: 100%;
   min-height: 100vh;
-  height: 100vh;
 
   display: flex;
   justify-content: center;
@@ -12,7 +11,6 @@
   position: relative;
   background: linear-gradient(rgba(0, 159, 168, 0.25), rgba(0, 159, 168, 0.15)),
     url("../assets/1.jpg") center/cover fixed no-repeat;
-  overflow: hidden; /* 固定背景區高度，改讓內層列表滾動 */
 }
 
 /* 左上漢堡按鈕：跟著頁面捲動 */
@@ -74,10 +72,6 @@
   border-radius: 16px;
   padding: 18px 16px 24px;
   box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-  display: flex;
-  flex-direction: column;
-  max-height: calc(100vh - 120px);
-  overflow: visible; /* 允許下拉選單浮出容器 */
 }
 
 /* 標題 */
@@ -253,9 +247,6 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  flex: 1;
-  overflow-y: auto;
-  padding-right: 4px;
 }
 
 /* 每張卡片 */
@@ -272,20 +263,16 @@
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 12px;
-  gap: 12px;
 }
 
 .hospital-name {
   font-size: 16px;
   margin: 0;
-  max-width: 430px;
-  word-break: break-word;
 }
 
 .hospital-distance {
   font-size: 14px;
   font-weight: bold;
-  white-space: nowrap; /* 距離固定同一行 */
 }
 
 /* 地址 */
@@ -386,7 +373,6 @@
 @media (max-width: 600px) {
   .search-wrapper {
     padding: 70px 14px 14px;
-    height: 100vh;
   }
 
   .search-controls {
@@ -397,10 +383,6 @@
   .dept-multi-select,
   .search-input {
     flex: 1 1 auto;
-  }
-
-  .search-container {
-    max-height: calc(100vh - 100px);
   }
 
   .tag-toggle {
@@ -438,22 +420,15 @@
   border: none;
   background: none;
   cursor: pointer;
-  font-size: 0;
+  font-size: 20px;
   transition: none !important;
   box-shadow: none !important;
-  color: #7b8c93;
 }
 
-.fav-heart:not(.active) {
-  color: #7b8c93 !important; /* 取消收藏後強制回到灰色 */
-}
-
-.fav-heart:hover,
-.fav-heart:focus-visible {
+.fav-heart:hover {
   box-shadow: none !important;
   background: none;
   transform: none !important;
-  color: #5f7076; /* 輕微變化但不與已收藏同色 */
 }
 
 .fav-heart:active {
@@ -462,17 +437,10 @@
 
 .fav-heart.active {
   transform: scale(1.1);
-  color: var(--primary);
 }
 
 .hospital-card:has(.fav-heart:hover),
 .hospital-card:has(.fav-heart:active) {
   box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;
   transform: none !important;
-}
-
-.heart-icon {
-  width: 22px;
-  height: 22px;
-  display: block;
 }
