@@ -48,6 +48,17 @@ function normalizeProvider(p) {
     address: normalizedAddress,
     specialty_id: specialtyId,
     specialty_name: resolvedDeptName,
+    specialties: Array.isArray(p.specialties)
+      ? p.specialties.map((s) => ({
+          id: normalizeId(s.specialty_id ?? s.id ?? s.specialtyid),
+          name:
+            typeof s.specialty_name === "string"
+              ? { zh: s.specialty_name, en: s.specialty_name }
+              : s.specialty_name ?? { zh: "", en: "" },
+        }))
+      : resolvedDeptName
+        ? [{ id: specialtyId, name: resolvedDeptName }]
+        : [],
     distanceKm: (() => {
       if (typeof p.distance_km === "number") return p.distance_km;
       const n = parseFloat(p.distance_km);
@@ -70,6 +81,8 @@ export default function HospitalSearch() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [keyword, setKeyword] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
   const [favorites, setFavorites] = useState([]);
   const [specialtiesFromApi, setSpecialtiesFromApi] = useState([]);
   const [selectedDepts, setSelectedDepts] = useState([]);
@@ -94,6 +107,7 @@ export default function HospitalSearch() {
   const fetchedDeptIds = useRef(new Set());
   const initialPrefetchDone = useRef(false);
   const selectedDeptSet = useMemo(() => new Set(selectedDepts.map((d) => normalizeId(d))), [selectedDepts]);
+  const trimmedKeyword = keyword.trim();
 
   const flattenedProviders = useMemo(() => {
     const list = [];
@@ -206,6 +220,45 @@ export default function HospitalSearch() {
     setProvidersCache(next);
   }, [providersFromState]);
 
+  useEffect(() => {
+    if (!trimmedKeyword) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+
+    let cancelled = false;
+    const handle = setTimeout(() => {
+      setSearching(true);
+      const params = new URLSearchParams({ q: trimmedKeyword });
+      if (coords?.lat != null && coords?.lng != null) {
+        params.set("lat", String(coords.lat));
+        params.set("lng", String(coords.lng));
+      }
+      getJson(`/api/providers/search?${params.toString()}`)
+        .then((res) => {
+          if (cancelled) return;
+          const providers = Array.isArray(res?.data) ? res.data : [];
+          setSearchResults(providers.map((p) => normalizeProvider(p)));
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          console.error("search providers failed", err);
+          showToast(err.message || "Failed to search providers");
+          setSearchResults([]);
+        })
+        .finally(() => {
+          if (cancelled) return;
+          setSearching(false);
+        });
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [trimmedKeyword, showToast, coords]);
+
   const ensureCoords = useCallback(async () => {
     if (coords) return coords;
     const next = await getGeolocationSafe();
@@ -263,13 +316,23 @@ export default function HospitalSearch() {
     [departments, ensureCoords, loadingDeptIds, showToast],
   );
 
+  const searchMode = trimmedKeyword.length > 0;
+
+  const providersForView = useMemo(() => {
+    const base = searchMode ? searchResults : flattenedProviders;
+    if (!selectedDeptSet.size) return base;
+    return base.filter((p) => {
+      if (!p.specialties || !p.specialties.length) {
+        return selectedDeptSet.has(normalizeId(p.specialty_id));
+      }
+      return p.specialties.some((s) => selectedDeptSet.has(normalizeId(s.id)));
+    });
+  }, [searchMode, searchResults, flattenedProviders, selectedDeptSet]);
+
   const filtered = useMemo(() => {
-    const base = selectedDeptSet.size
-      ? flattenedProviders.filter((p) => selectedDeptSet.has(normalizeId(p.specialty_id)))
-      : flattenedProviders;
     const toNum = (d) => (typeof d === "number" ? d : Number.POSITIVE_INFINITY);
-    return [...base].sort((a, b) => toNum(a.distanceKm) - toNum(b.distanceKm));
-  }, [flattenedProviders, selectedDeptSet]);
+    return [...providersForView].sort((a, b) => toNum(a.distanceKm) - toNum(b.distanceKm));
+  }, [providersForView]);
 
   const toggleFavorite = (provider) => {
     const exists = favorites.some((h) => h.id === provider.id);
@@ -585,18 +648,29 @@ export default function HospitalSearch() {
                   className={`hospital-tags ${
                     overflowCards.has(p.id) && !expandedCards.has(p.id) ? "collapsed" : ""
                   }`}
-                  ref={(el) => {
-                    if (el) {
-                      tagRefs.current.set(p.id, el);
-                    } else {
-                      tagRefs.current.delete(p.id);
-                    }
-                  }}
-                >
-                  {p.specialty_name && (
-                    <span className="dept-tag">{getDeptLabel(p.specialty_name)}</span>
-                  )}
-                </div>
+              ref={(el) => {
+                if (el) {
+                  tagRefs.current.set(p.id, el);
+                } else {
+                  tagRefs.current.delete(p.id);
+                }
+              }}
+            >
+              {(p.specialties && p.specialties.length
+                ? p.specialties
+                : p.specialty_name
+                  ? [{ id: p.specialty_id, name: p.specialty_name }]
+                  : []
+              ).map((spec) => {
+                const label = getDeptLabel(spec.name);
+                const key = `${p.id}-${spec.id ?? label}`;
+                return (
+                  <span key={key} className="dept-tag">
+                    {label}
+                  </span>
+                );
+              })}
+            </div>
                 {overflowCards.has(p.id) && (
                   <button
                     type="button"
@@ -627,11 +701,7 @@ export default function HospitalSearch() {
             </div>
           ))}
 
-          {!flattenedProviders.length && <p className="no-result">{t("noResult")}</p>}
-
-          {flattenedProviders.length > 0 && filtered.length === 0 && (
-            <p className="no-result">{t("noResult")}</p>
-          )}
+          {filtered.length === 0 && !searching && <p className="no-result">{t("noResult")}</p>}
         </div>
       </div>
     </div>

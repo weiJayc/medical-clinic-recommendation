@@ -58,6 +58,7 @@ async function findNearbyProviders(lat, lng, specialtyId, radius, limit) {
         p.address,
         s.specialty_id,
         s.specialty_name,
+        all_specs.specialties,
         ST_Y(p.geom::geometry) AS lat,
         ST_X(p.geom::geometry) AS lng,
         ROUND(ST_Distance(p.geom, q.user_geog))::int AS distance_m,
@@ -67,6 +68,15 @@ async function findNearbyProviders(lat, lng, specialtyId, radius, limit) {
         ON ps.provider_code = p.provider_code
     JOIN specialties s
         ON s.specialty_id = ps.specialty_id
+    LEFT JOIN LATERAL (
+        SELECT array_agg(
+            json_build_object('specialty_id', ps2.specialty_id, 'specialty_name', sp2.specialty_name)
+            ORDER BY ps2.specialty_id
+        ) AS specialties
+        FROM provider_specialties ps2
+        JOIN specialties sp2 ON sp2.specialty_id = ps2.specialty_id
+        WHERE ps2.provider_code = p.provider_code
+    ) all_specs ON TRUE
     CROSS JOIN q
     WHERE p.geom IS NOT NULL
         AND ps.specialty_id = $3
@@ -139,6 +149,107 @@ app.get("/api/health/db", async (req, res) => {
   try {
     const r = await pool.query("SELECT NOW() AS now;");
     res.json({ ok: true, now: r.rows[0].now });
+  } catch (err) {
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+app.get("/api/providers/search", async (req, res) => {
+  try {
+    const q = (req.query.q ?? "").trim();
+    if (!q) {
+      return res.status(400).json({ ok: false, message: "q is required" });
+    }
+
+    const limitRaw = req.query.limit ? Number(req.query.limit) : 50;
+    const limit = Math.min(Math.max(limitRaw, 1), 100);
+
+    let latNum = null;
+    let lngNum = null;
+    const hasLat = req.query.lat !== undefined;
+    const hasLng = req.query.lng !== undefined;
+    if (hasLat || hasLng) {
+      if (!hasLat || !hasLng) throw new Error("lat and lng are required together");
+      latNum = toNumber(req.query.lat, "lat");
+      lngNum = toNumber(req.query.lng, "lng");
+    }
+
+    const baseSelect = `
+      p.provider_code,
+      p.name,
+      p.phone,
+      p.city_dist,
+      p.address,
+      s.specialty_id,
+      s.specialty_name,
+      all_specs.specialties
+    `;
+
+    const baseSpecialtyJoin = `
+      LEFT JOIN LATERAL (
+        SELECT ps.specialty_id, sp.specialty_name
+        FROM provider_specialties ps
+        JOIN specialties sp ON sp.specialty_id = ps.specialty_id
+        WHERE ps.provider_code = p.provider_code
+        ORDER BY ps.specialty_id ASC
+        LIMIT 1
+      ) s ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT array_agg(
+            json_build_object('specialty_id', ps2.specialty_id, 'specialty_name', sp2.specialty_name)
+            ORDER BY ps2.specialty_id
+        ) AS specialties
+        FROM provider_specialties ps2
+        JOIN specialties sp2 ON sp2.specialty_id = ps2.specialty_id
+        WHERE ps2.provider_code = p.provider_code
+      ) all_specs ON TRUE
+    `;
+
+    let sql = "";
+    let params = [];
+
+    if (latNum !== null && lngNum !== null) {
+      sql = `
+        WITH q AS (
+          SELECT ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography AS user_geog
+        )
+        SELECT
+          ${baseSelect},
+          ST_Y(p.geom::geometry) AS lat,
+          ST_X(p.geom::geometry) AS lng,
+          ROUND(ST_Distance(p.geom, q.user_geog))::int AS distance_m,
+          ROUND((ST_Distance(p.geom, q.user_geog) / 1000.0)::numeric, 2) AS distance_km
+        FROM providers p
+        ${baseSpecialtyJoin}
+        CROSS JOIN q
+        WHERE p.name ILIKE $3
+        ORDER BY distance_m ASC, p.name ASC
+        LIMIT $4;
+      `;
+      params = [lngNum, latNum, `%${q}%`, limit];
+    } else {
+      sql = `
+        SELECT
+          ${baseSelect},
+          NULL::numeric AS distance_m,
+          NULL::numeric AS distance_km
+        FROM providers p
+        ${baseSpecialtyJoin}
+        WHERE p.name ILIKE $1
+        ORDER BY p.name ASC
+        LIMIT $2;
+      `;
+      params = [`%${q}%`, limit];
+    }
+
+    const { rows } = await pool.query(sql, params);
+
+    res.json({
+      ok: true,
+      query: { q, limit, lat: latNum, lng: lngNum },
+      count: rows.length,
+      data: rows,
+    });
   } catch (err) {
     res.status(500).json({ ok: false, message: err.message });
   }
