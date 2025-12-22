@@ -266,6 +266,21 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
+.hospital-card.clickable {
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.hospital-card.clickable:hover {
+  box-shadow: 0 6px 16px rgba(0,0,0,0.10);
+  transform: translateY(-1px);
+}
+
+.hospital-card.clickable:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 /* 卡片上段：標題 + 距離 */
 .hospital-header {
   display: flex;

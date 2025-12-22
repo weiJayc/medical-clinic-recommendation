@@ -349,6 +349,17 @@ export default function HospitalSearch() {
     return t("distance");
   };
 
+  const openProviderInGoogleMaps = useCallback(
+    (provider) => {
+      const addressText = String(getLocalizedText(provider?.address, language) || "").trim();
+      if (!addressText) return;
+
+      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressText)}`;
+      window.open(url, "_blank", "noopener,noreferrer");
+    },
+    [language],
+  );
+
   const handleDropdownToggle = () => {
     setDeptDropdownOpen((prev) => {
       const next = !prev;
@@ -609,7 +620,19 @@ export default function HospitalSearch() {
 
         <div className="hospital-list">
           {filtered.map((p) => (
-            <div key={p.id} className="hospital-card">
+            <div
+              key={p.id}
+              className="hospital-card clickable"
+              role="link"
+              tabIndex={0}
+              aria-label={`${getLocalizedText(p.name, language)} ${getLocalizedText(p.address, language)}`}
+              onClick={() => openProviderInGoogleMaps(p)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                openProviderInGoogleMaps(p);
+              }}
+            >
               <div className="hospital-header">
                 <div>
                   <h3 className="hospital-name">{getLocalizedText(p.name, language)}</h3>
@@ -622,7 +645,10 @@ export default function HospitalSearch() {
                   <div className="hospital-distance">{renderDistance(p)}</div>
                   <button
                     className={`fav-heart ${isFavorite(p.id) ? "active" : ""}`}
-                    onClick={() => toggleFavorite(p)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFavorite(p);
+                    }}
                     aria-label="toggle favorite"
                   >
                     <svg
@@ -675,7 +701,10 @@ export default function HospitalSearch() {
                   <button
                     type="button"
                     className="tag-toggle"
-                    onClick={() => toggleTagVisibility(p.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleTagVisibility(p.id);
+                    }}
                     aria-label={expandedCards.has(p.id) ? t("tagsCollapse") : t("tagsExpand")}
                     aria-expanded={expandedCards.has(p.id)}
                   >
