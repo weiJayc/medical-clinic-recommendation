@@ -12,6 +12,19 @@ const normalizeId = (v) => {
   return Number.isFinite(n) ? n : v;
 };
 
+const filterAddressForMaps = (addressText) => {
+  const text = String(addressText || "").trim();
+  if (!text) return "";
+
+  const numberMatch = text.match(/^(.*?[0-9０-９]+)\s*號/);
+  if (numberMatch) return `${numberMatch[1]}號`;
+
+  const haoMatch = text.match(/^(.*?號)/);
+  if (haoMatch) return haoMatch[1];
+
+  return text;
+};
+
 async function getGeolocationSafe() {
   if (!("geolocation" in navigator)) return null;
   return new Promise((resolve) => {
@@ -109,6 +122,34 @@ export default function HospitalSearch() {
   const selectedDeptSet = useMemo(() => new Set(selectedDepts.map((d) => normalizeId(d))), [selectedDepts]);
   const trimmedKeyword = keyword.trim();
 
+  const matchesKeyword = useCallback(
+    (provider, q) => {
+      const needle = String(q || "").trim().toLowerCase();
+      if (!needle) return true;
+
+      const nameZh = String(getLocalizedText(provider?.name, "zh") || "").toLowerCase();
+      const nameEn = String(getLocalizedText(provider?.name, "en") || "").toLowerCase();
+      const addressZh = String(getLocalizedText(provider?.address, "zh") || "").toLowerCase();
+      const addressEn = String(getLocalizedText(provider?.address, "en") || "").toLowerCase();
+      const phone = String(provider?.phone || "").toLowerCase();
+      const specialties = Array.isArray(provider?.specialties) ? provider.specialties : [];
+      const specialtyText = specialties
+        .map((s) => `${getLocalizedText(s?.name, "zh")} ${getLocalizedText(s?.name, "en")}`)
+        .join(" ")
+        .toLowerCase();
+
+      return (
+        nameZh.includes(needle) ||
+        nameEn.includes(needle) ||
+        addressZh.includes(needle) ||
+        addressEn.includes(needle) ||
+        phone.includes(needle) ||
+        specialtyText.includes(needle)
+      );
+    },
+    [],
+  );
+
   const flattenedProviders = useMemo(() => {
     const list = [];
     providersCache.forEach((group) => {
@@ -116,6 +157,16 @@ export default function HospitalSearch() {
     });
     return list;
   }, [providersCache]);
+
+  const deptFilteredProviders = useMemo(() => {
+    if (!selectedDeptSet.size) return flattenedProviders;
+    return flattenedProviders.filter((p) => {
+      if (!p.specialties || !p.specialties.length) {
+        return selectedDeptSet.has(normalizeId(p.specialty_id));
+      }
+      return p.specialties.some((s) => selectedDeptSet.has(normalizeId(s.id)));
+    });
+  }, [flattenedProviders, selectedDeptSet]);
 
   const departments = useMemo(() => {
     const fromProviders = flattenedProviders
@@ -230,6 +281,15 @@ export default function HospitalSearch() {
     let cancelled = false;
     const handle = setTimeout(() => {
       setSearching(true);
+
+      if (selectedDeptSet.size) {
+        const localMatches = deptFilteredProviders.filter((p) => matchesKeyword(p, trimmedKeyword));
+        if (cancelled) return;
+        setSearchResults(localMatches);
+        setSearching(false);
+        return;
+      }
+
       const params = new URLSearchParams({ q: trimmedKeyword });
       if (coords?.lat != null && coords?.lng != null) {
         params.set("lat", String(coords.lat));
@@ -257,7 +317,7 @@ export default function HospitalSearch() {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [trimmedKeyword, showToast, coords]);
+  }, [trimmedKeyword, showToast, coords, selectedDeptSet, deptFilteredProviders, matchesKeyword]);
 
   const ensureCoords = useCallback(async () => {
     if (coords) return coords;
@@ -352,9 +412,10 @@ export default function HospitalSearch() {
   const openProviderInGoogleMaps = useCallback(
     (provider) => {
       const addressText = String(getLocalizedText(provider?.address, language) || "").trim();
-      if (!addressText) return;
+      const filteredAddress = filterAddressForMaps(addressText);
+      if (!filteredAddress) return;
 
-      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressText)}`;
+      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(filteredAddress)}`;
       window.open(url, "_blank", "noopener,noreferrer");
     },
     [language],

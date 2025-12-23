@@ -21,6 +21,19 @@ const normalizeHospital = (h) => ({
   rating: h.rating ?? "",
 });
 
+const filterAddressForMaps = (addressText) => {
+  const text = String(addressText || "").trim();
+  if (!text) return "";
+
+  const numberMatch = text.match(/^(.*?[0-9０-９]+)\s*號/);
+  if (numberMatch) return `${numberMatch[1]}號`;
+
+  const haoMatch = text.match(/^(.*?號)/);
+  if (haoMatch) return haoMatch[1];
+
+  return text;
+};
+
 export default function Favorite() {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
@@ -44,11 +57,19 @@ export default function Favorite() {
     }
   }, []);
 
-  const formatMetric = (value, digits = 1) => {
-    if (value === null || value === undefined || value === "") return "--";
-    const num = Number(value);
-    if (Number.isNaN(num)) return value;
-    return num.toFixed(digits);
+  const openHospitalInGoogleMaps = (hospital) => {
+    const addressText = String(
+      getLocalizedText(hospital?.address, language) ||
+      getLocalizedText(hospital?.address, "zh") ||
+      getLocalizedText(hospital?.address, "en") ||
+      "",
+    ).trim();
+
+    const filteredAddress = filterAddressForMaps(addressText);
+    if (!filteredAddress) return;
+
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(filteredAddress)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const removeFavorite = (id) => {
@@ -97,19 +118,33 @@ export default function Favorite() {
             <p className="no-fav">{t("noFavorite")}</p>
           ) : (
             favorites.map((h) => {
-              const distance = formatMetric(h.distanceKm);
               return (
-                <div key={h.id} className="hospital-card fav-card">
+                <div
+                  key={h.id}
+                  className="hospital-card fav-card clickable"
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`${getLocalizedText(h.name, language)} ${getLocalizedText(h.address, language)}`}
+                  onClick={() => openHospitalInGoogleMaps(h)}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter" && e.key !== " ") return;
+                    e.preventDefault();
+                    openHospitalInGoogleMaps(h);
+                  }}
+                >
                   <div className="hospital-header">
                     <div>
                       <h3 className="hospital-name">{getLocalizedText(h.name, language)}</h3>
                     </div>
                     <div className="hospital-right">
-                      {distance !== "--" && (
-                        <div className="hospital-distance">{distance} km</div>
-                      )}
                       {isEditing && (
-                        <button className="remove-btn" onClick={() => removeFavorite(h.id)}>
+                        <button
+                          className="remove-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFavorite(h.id);
+                          }}
+                        >
                           {t("remove")}
                         </button>
                       )}
